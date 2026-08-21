@@ -16,8 +16,9 @@ function scr_tic_enchantment_prefix()
 
     var _prefix = ""
 
+    // StoneshardFont_CH/JP include U+26A0 WARNING SIGN.
     if (ds_map_find_value_ext(_data, "is_cursed", false))
-        _prefix += "☠"
+        _prefix += "⚠"
 
     // Other_20 already asks vanilla for scr_hoversGetEnchantedAttributes().
     // That result is a flat [name, value, name, value, ...] array, so every
@@ -26,16 +27,14 @@ function scr_tic_enchantment_prefix()
     if (_count > 2)
         _count = 2
 
-    // Use ASCII '*' for now because the Stoneshard title font does not render
-    // the Unicode sparkle glyph reliably. Once the pipeline is verified in-game,
-    // this can be replaced with a supported decorative glyph if desired.
+    // StoneshardFont_CH/JP include U+2605 BLACK STAR.
     switch (_count)
     {
         case 1:
-            _prefix += "*"
+            _prefix += "★"
             break
         case 2:
-            _prefix += "**"
+            _prefix += "★★"
             break
     }
 
