@@ -133,11 +133,11 @@ scr_tic_debug_hover(owner, enchantedAttributesArray, title, _ticPrefix)")
     {
         switch (tier)
         {
-            case 1: return "make_colour_rgb(200, 192, 175)"; // Bone #C8C0AF
-            case 2: return "make_colour_rgb(127, 166, 106)"; // Moss #7FA66A
-            case 3: return "make_colour_rgb(93, 142, 173)";  // Steel Blue #5D8EAD
-            case 4: return "make_colour_rgb(181, 106, 90)";  // Burnished Red #B56A5A
-            case 5: return "make_colour_rgb(214, 166, 74)";  // Antique Gold #D6A64A
+            case 1: return "make_colour_rgb(200, 192, 175)"; // Bone #C8C0AF, baseline
+            case 2: return "make_colour_rgb(126, 169, 103)"; // Moss #7EA967, +10% saturation
+            case 3: return "make_colour_rgb(85, 144, 181)";  // Steel Blue #5590B5, +20% saturation
+            case 4: return "make_colour_rgb(195, 97, 76)";   // Burnished Red #C3614C, +30% saturation
+            case 5: return "make_colour_rgb(242, 175, 46)"; // Antique Gold #F2AF2E, +40% saturation
             default: throw new ArgumentOutOfRangeException("tier");
         }
     }
