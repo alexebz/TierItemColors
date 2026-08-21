@@ -46,6 +46,8 @@ function scr_tic_debug_hover()
                     _enchantedText += string(_enchanted[_i])
                 }
 
+                var _prefix = scr_tic_enchantment_prefix(_owner, _enchanted)
+
                 scr_msl_log(
                     "[TIC] title=" + _title
                     + " owner=" + string(_owner)
@@ -61,7 +63,9 @@ function scr_tic_debug_hover()
                     + " Char0=" + _char0
                     + " Char1=" + _char1
                     + " enchantedLen=" + string(_enchantedLength)
-                    + " enchanted=[" + _enchantedText + "]")
+                    + " enchanted=[" + _enchantedText + "]"
+                    + " prefix='" + _prefix + "'"
+                    + " prefixLen=" + string(string_length(_prefix)))
             }
             else
             {
