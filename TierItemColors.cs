@@ -212,16 +212,20 @@ public class TierItemColors : Mod
         }
 
         int tintedDrawCalls = 0;
+        int spriteDrawCalls = 0;
+
         for (int i = 0; i < lines.Length; i++)
         {
-            bool isFrameDraw =
-                lines[i].Contains("draw_sprite_ext(s_wline", StringComparison.Ordinal)
-                || lines[i].Contains("draw_sprite_ext(s_hline", StringComparison.Ordinal)
-                || lines[i].Contains("draw_sprite_ext(arg6", StringComparison.Ordinal);
-
-            if (!isFrameDraw)
+            if (!lines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
                 continue;
 
+            spriteDrawCalls++;
+
+            // In vanilla scr_hoversDrawBoard there are exactly eight white
+            // draw_sprite_ext calls: top, bottom, left, right and four corners.
+            // The two background s_point draws use make_color_rgb(...) instead.
+            // Matching by tint instead of sprite name survives UMT/MSL replacing
+            // s_wline/s_hline with numeric asset IDs during decompilation.
             if (lines[i].Contains("c_white", StringComparison.Ordinal))
             {
                 lines[i] = lines[i].Replace("c_white", "arg7", StringComparison.Ordinal);
@@ -229,7 +233,6 @@ public class TierItemColors : Mod
             }
             else if (lines[i].Contains("16777215", StringComparison.Ordinal))
             {
-                // Some UndertaleModLib builds decompile c_white as its numeric value.
                 lines[i] = lines[i].Replace("16777215", "arg7", StringComparison.Ordinal);
                 tintedDrawCalls++;
             }
@@ -239,13 +242,11 @@ public class TierItemColors : Mod
             }
         }
 
-        // Vanilla 0.9.4.25 has two horizontal edges, two vertical edges and
-        // four corner frames: eight sprite draw calls in total.
         if (tintedDrawCalls != 8)
         {
             throw new InvalidOperationException(
-                "Tier Item Colors expected 8 tintable native frame draw calls in " + HoverBoard +
-                " but found " + tintedDrawCalls + ".");
+                "Tier Item Colors expected 8 white native frame draws in " + HoverBoard +
+                " but found " + tintedDrawCalls + " across " + spriteDrawCalls + " sprite draws.");
         }
 
         Msl.SetStringGMLInFile(string.Join("\n", lines), HoverBoard);
