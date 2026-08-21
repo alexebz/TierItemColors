@@ -224,6 +224,41 @@ public class TierItemColors : Mod
                 "Tier Item Colors could not locate scr_hoversDrawBoard in " + HoverRenderDraw + ".");
         }
 
+        // In vanilla 0.9.4.25 the first two draw_sprite_ext calls after the
+        // board draw are the tier background plate and the tier diamond/number.
+        // Match by position instead of tierDraw/asset names because UMT/MSL can
+        // normalize both variable and sprite identifiers while decompiling.
+        int tierTintedDraws = 0;
+        for (int i = boardLine + 1; i < lines.Length && tierTintedDraws < 2; i++)
+        {
+            if (!lines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
+                continue;
+
+            if (lines[i].Contains("c_white", StringComparison.Ordinal))
+            {
+                lines[i] = lines[i].Replace("c_white", "_ticFrameColor", StringComparison.Ordinal);
+            }
+            else if (lines[i].Contains("16777215", StringComparison.Ordinal))
+            {
+                lines[i] = lines[i].Replace("16777215", "_ticFrameColor", StringComparison.Ordinal);
+            }
+            else if (!lines[i].Contains("_ticFrameColor", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Tier Item Colors found a tier-badge draw after " + HoverBoardCallName() +
+                    " but could not locate its white tint.");
+            }
+
+            tierTintedDraws++;
+        }
+
+        if (tierTintedDraws != 2)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors expected the first 2 sprite draws after the hover board to be the tier badge, " +
+                "but found only " + tierTintedDraws + ".");
+        }
+
         string indent = lines[boardLine][..(lines[boardLine].Length - lines[boardLine].TrimStart().Length)];
         string originalCall = lines[boardLine].Trim();
         string tintedCall = originalCall.Replace(
@@ -256,55 +291,11 @@ public class TierItemColors : Mod
             + "\n"
             + string.Join("\n", lines, boardLine + 1, lines.Length - boardLine - 1);
 
-        string[] patchedLines = patched.Replace("\r\n", "\n").Split('\n');
-        int tierBlockLine = -1;
-        for (int i = 0; i < patchedLines.Length; i++)
-        {
-            if (patchedLines[i].Trim().StartsWith("if (tierDraw)", StringComparison.Ordinal))
-            {
-                tierBlockLine = i;
-                break;
-            }
-        }
+        Msl.SetStringGMLInFile(patched, HoverRenderDraw);
+    }
 
-        if (tierBlockLine < 0)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors could not locate the tierDraw block in " + HoverRenderDraw + ".");
-        }
-
-        int tierTintedDraws = 0;
-        for (int i = tierBlockLine + 1; i < patchedLines.Length; i++)
-        {
-            if (patchedLines[i].Trim().StartsWith("if (headerDraw)", StringComparison.Ordinal))
-                break;
-
-            if (!patchedLines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
-                continue;
-
-            if (patchedLines[i].Contains("c_white", StringComparison.Ordinal))
-            {
-                patchedLines[i] = patchedLines[i].Replace("c_white", "_ticFrameColor", StringComparison.Ordinal);
-                tierTintedDraws++;
-            }
-            else if (patchedLines[i].Contains("16777215", StringComparison.Ordinal))
-            {
-                patchedLines[i] = patchedLines[i].Replace("16777215", "_ticFrameColor", StringComparison.Ordinal);
-                tierTintedDraws++;
-            }
-            else if (patchedLines[i].Contains("_ticFrameColor", StringComparison.Ordinal))
-            {
-                tierTintedDraws++;
-            }
-        }
-
-        if (tierTintedDraws != 2)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors expected 2 tier-badge sprite draws in " + HoverRenderDraw +
-                " but found " + tierTintedDraws + ".");
-        }
-
-        Msl.SetStringGMLInFile(string.Join("\n", patchedLines), HoverRenderDraw);
+    private static string HoverBoardCallName()
+    {
+        return "scr_hoversDrawBoard";
     }
 }
