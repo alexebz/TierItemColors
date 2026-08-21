@@ -18,7 +18,6 @@ public class TierItemColors : Mod
     public override string TargetVersion => "0.9.4.25";
 
     private const string HoverWeaponDraw = "gml_Object_o_hoverWeapon_Other_21";
-    private const string GroundLootDrawEnd = "gml_Object_o_weapon_loot_Draw_73";
     private const string LootColor = "gml_GlobalScript_scr_loot_color";
     private const string WeaponsTable = "gml_GlobalScript_table_weapons";
     private const string ArmorTable = "gml_GlobalScript_table_armor";
@@ -31,7 +30,6 @@ public class TierItemColors : Mod
         // both are emitted as aliases for the same tier.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
         Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_hover_markers.gml"), "scr_tic_draw_hover_markers");
-        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_ground_markers.gml"), "scr_tic_draw_ground_markers");
 
         ConfigureMarkerSprite("spr_tic_enchant_minor");
         ConfigureMarkerSprite("spr_tic_enchant_major");
@@ -39,7 +37,6 @@ public class TierItemColors : Mod
 
         PatchLootColor();
         PatchHoverMarkers();
-        PatchGroundMarkers();
     }
 
     private static void ConfigureMarkerSprite(string spriteName)
@@ -221,20 +218,5 @@ public class TierItemColors : Mod
             + string.Join("\n", lines, targetLine, lines.Length - targetLine);
 
         Msl.SetStringGMLInFile(patched, HoverWeaponDraw);
-    }
-
-    private static void PatchGroundMarkers()
-    {
-        // Draw End is independent from the normal Draw event, so adding a marker
-        // layer does not replace or interfere with vanilla loot rendering.
-        try
-        {
-            string code = Msl.GetStringGMLFromFile(GroundLootDrawEnd);
-            Msl.SetStringGMLInFile(code + "\nscr_tic_draw_ground_markers(id)\n", GroundLootDrawEnd);
-        }
-        catch (InvalidOperationException)
-        {
-            Msl.AddNewEvent("o_weapon_loot", "scr_tic_draw_ground_markers(id)", EventType.Draw, 73);
-        }
     }
 }
