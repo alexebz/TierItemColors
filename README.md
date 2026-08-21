@@ -1,6 +1,6 @@
 # Tier Item Colors
 
-A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the primary visual language for equipment names and adds subtle matching accents to equipment tooltips.
+A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the primary visual language for equipment names and adds a matching tier-colored tooltip border.
 
 ## Tier palette
 
@@ -18,20 +18,20 @@ Normal and cursed equipment use their tier color.
 
 **Unique items keep Stoneshard's vanilla purple (`#8248BC`).**
 
-## Tooltip frame accents
+## Tooltip frame color
 
-Equipment hover tooltips keep Stoneshard's original frame, background, and layout.
+Equipment hover tooltips keep Stoneshard's original frame artwork, background, and layout.
 
-Tier Item Colors overlays only short **L-shaped accents at the frame corners** using the same color as the item title:
+Tier Item Colors overlays a thin colored line along the **entire frame perimeter** using the same color as the item title:
 
-- T1 → Bone corners
-- T2 → Moss corners
-- T3 → Steel Blue corners
-- T4 → Burnished Red corners
-- T5 → Antique Gold corners
-- Unique → vanilla purple corners
+- T1 → Bone border
+- T2 → Moss border
+- T3 → Steel Blue border
+- T4 → Burnished Red border
+- T5 → Antique Gold border
+- Unique → vanilla purple border
 
-The full frame is intentionally **not** recolored. Only the corner/edge accents change color so the result stays close to Stoneshard's native UI style.
+Only the outer edge treatment changes color; the tooltip interior and original gothic frame artwork remain visible underneath.
 
 The old enchantment/cursed marker icons have been removed completely. The mod no longer adds state icons to hover tooltips or ground loot.
 
@@ -43,7 +43,7 @@ The mod does **not** infer tier from runtime `LVL`. During patching it reads the
 
 Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-Tooltip corner accents are drawn by `scr_tic_draw_hover_corners` from `gml_Object_o_hoverWeapon_Other_21`. The helper receives vanilla's already-resolved `titleColor`, so the corner accents always match the title color without maintaining a second palette lookup.
+The tooltip border overlay is drawn by `scr_tic_draw_hover_corners` from `gml_Object_o_hoverWeapon_Other_21`. The helper receives vanilla's already-resolved `titleColor`, so the perimeter always matches the title color without maintaining a second palette lookup.
 
 ## Build / MSL discovery
 
