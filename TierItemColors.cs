@@ -12,11 +12,12 @@ public class TierItemColors : Mod
 {
     public override string Author => "alexebz";
     public override string Name => "Tier Item Colors";
-    public override string Description => "Colors equipment names by tier and adds matching color accents to tooltip frame corners.";
+    public override string Description => "Colors equipment names and the native Stoneshard tooltip frame by tier.";
     public override string Version => "0.1.0";
     public override string TargetVersion => "0.9.4.25";
 
-    private const string HoverWeaponDraw = "gml_Object_o_hoverWeapon_Other_21";
+    private const string HoverRenderDraw = "gml_Object_o_hoverRender_Other_21";
+    private const string HoverBoard = "gml_GlobalScript_scr_hoversDrawBoard";
     private const string LootColor = "gml_GlobalScript_scr_loot_color";
     private const string WeaponsTable = "gml_GlobalScript_table_weapons";
     private const string ArmorTable = "gml_GlobalScript_table_armor";
@@ -28,10 +29,10 @@ public class TierItemColors : Mod
         // column 1 (name), while some code paths use column 3 (resource id), so
         // both are emitted as aliases for the same tier.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
-        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_hover_corners.gml"), "scr_tic_draw_hover_corners");
 
         PatchLootColor();
-        PatchHoverCorners();
+        PatchHoverBoardColorSupport();
+        PatchEquipmentHoverFrame();
     }
 
     private static string BuildTierColorFunction()
@@ -173,17 +174,62 @@ public class TierItemColors : Mod
         Msl.SetStringGMLInFile(patched, LootColor);
     }
 
-    private static void PatchHoverCorners()
+    private static void PatchHoverBoardColorSupport()
     {
-        string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
+        string code = Msl.GetStringGMLFromFile(HoverBoard);
+        string signature =
+            "function scr_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 6970)";
+
+        if (!code.Contains(signature, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate the scr_hoversDrawBoard signature. " +
+                "The Stoneshard tooltip frame implementation may have changed.");
+        }
+
+        code = code.Replace(
+            signature,
+            "function scr_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 6970, arg7 = 16777215)",
+            StringComparison.Ordinal);
+
+        string[] lines = code.Replace("\r\n", "\n").Split('\n');
+        int tintedDrawCalls = 0;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            bool isFrameDraw =
+                lines[i].Contains("draw_sprite_ext(s_wline", StringComparison.Ordinal)
+                || lines[i].Contains("draw_sprite_ext(s_hline", StringComparison.Ordinal)
+                || lines[i].Contains("draw_sprite_ext(arg6", StringComparison.Ordinal);
+
+            if (isFrameDraw && lines[i].Contains("c_white", StringComparison.Ordinal))
+            {
+                lines[i] = lines[i].Replace("c_white", "arg7", StringComparison.Ordinal);
+                tintedDrawCalls++;
+            }
+        }
+
+        // Vanilla 0.9.4.25 has two horizontal edges, two vertical edges and
+        // four corner frames: eight sprite draw calls in total.
+        if (tintedDrawCalls != 8)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors expected 8 tintable frame draw calls in " + HoverBoard +
+                " but found " + tintedDrawCalls + ".");
+        }
+
+        Msl.SetStringGMLInFile(string.Join("\n", lines), HoverBoard);
+    }
+
+    private static void PatchEquipmentHoverFrame()
+    {
+        string code = Msl.GetStringGMLFromFile(HoverRenderDraw);
         string[] lines = code.Replace("\r\n", "\n").Split('\n');
 
         int targetLine = -1;
         for (int i = 0; i < lines.Length; i++)
         {
-            if (lines[i].Contains("scr_drawTextExt", StringComparison.Ordinal)
-                && lines[i].Contains("title", StringComparison.Ordinal)
-                && lines[i].Contains("titleColor", StringComparison.Ordinal))
+            if (lines[i].Contains("scr_hoversDrawBoard(", StringComparison.Ordinal))
             {
                 targetLine = i;
                 break;
@@ -193,18 +239,26 @@ public class TierItemColors : Mod
         if (targetLine < 0)
         {
             throw new InvalidOperationException(
-                "Tier Item Colors could not locate the title draw call in " + HoverWeaponDraw + ".");
+                "Tier Item Colors could not locate scr_hoversDrawBoard in " + HoverRenderDraw + ".");
         }
 
         string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
-        string injected = indent
-            + "scr_tic_draw_hover_corners(contentX, contentY, contentWidth, id, titleColor, surfaceScale)\n";
+        string injected =
+            indent + "var _ticFrameColor = 16777215\n" +
+            indent + "if (instance_exists(contentRender))\n" +
+            indent + "{\n" +
+            indent + "    var _ticContentObject = contentRender.object_index\n" +
+            indent + "    if ((_ticContentObject == o_hoverWeapon || object_is_ancestor(_ticContentObject, o_hoverWeapon)) && variable_instance_exists(contentRender, \"titleColor\"))\n" +
+            indent + "        _ticFrameColor = variable_instance_get(contentRender, \"titleColor\")\n" +
+            indent + "}\n" +
+            indent + "scr_hoversDrawBoard(_borderLeft, _borderTop, _borderRight, _borderBottom, surfaceScale, false, 6970, _ticFrameColor)";
 
         string patched = string.Join("\n", lines, 0, targetLine)
             + (targetLine > 0 ? "\n" : "")
             + injected
-            + string.Join("\n", lines, targetLine, lines.Length - targetLine);
+            + "\n"
+            + string.Join("\n", lines, targetLine + 1, lines.Length - targetLine - 1);
 
-        Msl.SetStringGMLInFile(patched, HoverWeaponDraw);
+        Msl.SetStringGMLInFile(patched, HoverRenderDraw);
     }
 }
