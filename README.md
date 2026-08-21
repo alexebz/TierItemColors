@@ -1,6 +1,6 @@
 # Tier Item Colors
 
-A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the primary visual language for normal equipment names while preserving a distinct look for Unique items.
+A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the primary visual language for equipment names and adds subtle matching accents to equipment tooltips.
 
 ## Tier palette
 
@@ -12,35 +12,28 @@ A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the prim
 | T4 | Burnished Red | `#C3614C` | `195, 97, 76` |
 | T5 | Antique Gold | `#F2AF2E` | `242, 175, 46` |
 
+T1 keeps the original Bone intensity. Saturation increases progressively from T2 through T5.
+
 Normal and cursed equipment use their tier color.
 
 **Unique items keep Stoneshard's vanilla purple (`#8248BC`).**
 
-## Item-state markers
+## Tooltip frame accents
 
-Item state is communicated with small Stoneshard-style sprites in equipment hover tooltips while preserving the selected name color:
+Equipment hover tooltips keep Stoneshard's original frame, background, and layout.
 
-- `spr_tic_enchant_minor` — one enchantment
-- `spr_tic_enchant_major` — two enchantments
-- `spr_tic_cursed` — cursed item
+Tier Item Colors overlays only short **L-shaped accents at the frame corners** using the same color as the item title:
 
-The markers are only shown after an item is identified, so unidentified equipment does not reveal hidden curse or enchantment information.
+- T1 → Bone corners
+- T2 → Moss corners
+- T3 → Steel Blue corners
+- T4 → Burnished Red corners
+- T5 → Antique Gold corners
+- Unique → vanilla purple corners
 
-Markers are intentionally **not drawn on equipment lying on the ground**. Ground loot keeps Stoneshard's normal presentation; state icons appear only in the hover tooltip.
+The full frame is intentionally **not** recolored. Only the corner/edge accents change color so the result stays close to Stoneshard's native UI style.
 
-### Hover layout
-
-The source sprites are 16×16 and are drawn at **1.5× UI scale** (24×24 at the base scale). They are anchored inside the tooltip header with a small left inset instead of depending on localized title width, so long or wrapped item names cannot push the markers outside the clipped hover surface.
-
-For items that are both cursed and enchanted, the cursed marker is drawn first and the enchantment marker is placed beside it with a small 2px inter-icon gap.
-
-## Visual language
-
-- **Tier color** → progression tier for normal/cursed equipment
-- **Purple** → Unique item
-- **Enchant I sprite** → one displayed enchantment
-- **Enchant II sprite** → two displayed enchantments
-- **Cursed sprite** → cursed item
+The old enchantment/cursed marker icons have been removed completely. The mod no longer adds state icons to hover tooltips or ground loot.
 
 ## Implementation
 
@@ -50,9 +43,7 @@ The mod does **not** infer tier from runtime `LVL`. During patching it reads the
 
 Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds for the equipment tooltip.
-
-The marker sprites are packed by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations.
+Tooltip corner accents are drawn by `scr_tic_draw_hover_corners` from `gml_Object_o_hoverWeapon_Other_21`. The helper receives vanilla's already-resolved `titleColor`, so the corner accents always match the title color without maintaining a second palette lookup.
 
 ## Build / MSL discovery
 
@@ -71,11 +62,8 @@ ModShardLauncher/
         ├── TierItemColors.cs
         ├── README.md
         ├── icon.png
-        ├── spr_tic_enchant_minor.png
-        ├── spr_tic_enchant_major.png
-        ├── spr_tic_cursed.png
         └── Codes/
-            └── scr_tic_draw_hover_markers.gml
+            └── scr_tic_draw_hover_corners.gml
 ```
 
 Until PR #1 is merged, use the feature branch explicitly:
