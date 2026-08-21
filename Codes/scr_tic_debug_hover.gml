@@ -3,6 +3,7 @@ function scr_tic_debug_hover()
     var _owner = argument0
     var _enchanted = argument1
     var _title = string(argument2)
+    var _prefix = string(argument3)
 
     if (instance_exists(_owner))
     {
@@ -46,10 +47,16 @@ function scr_tic_debug_hover()
                     _enchantedText += string(_enchanted[_i])
                 }
 
-                var _prefix = scr_tic_enchantment_prefix(_owner, _enchanted)
+                var _prefixOrd = -1
+                if (string_length(_prefix) > 0)
+                    _prefixOrd = ord(string_char_at(_prefix, 1))
+
+                var _fontName = font_get_name(global.f_digits)
+                var _fontFirst = font_get_first(global.f_digits)
+                var _fontLast = font_get_last(global.f_digits)
 
                 scr_msl_log(
-                    "[TIC] title=" + _title
+                    "[TIC] finalTitle=" + _title
                     + " owner=" + string(_owner)
                     + " idName=" + _idName
                     + " arrayPosition=" + _arrayPosition
@@ -65,11 +72,16 @@ function scr_tic_debug_hover()
                     + " enchantedLen=" + string(_enchantedLength)
                     + " enchanted=[" + _enchantedText + "]"
                     + " prefix='" + _prefix + "'"
-                    + " prefixLen=" + string(string_length(_prefix)))
+                    + " prefixLen=" + string(string_length(_prefix))
+                    + " prefixBytes=" + string(string_byte_length(_prefix))
+                    + " prefixOrd=" + string(_prefixOrd)
+                    + " font=" + _fontName
+                    + " fontFirst=" + string(_fontFirst)
+                    + " fontLast=" + string(_fontLast))
             }
             else
             {
-                scr_msl_log("[TIC] title=" + _title + " owner=" + string(_owner) + " data=<invalid>")
+                scr_msl_log("[TIC] finalTitle=" + _title + " owner=" + string(_owner) + " data=<invalid>")
             }
         }
     }
