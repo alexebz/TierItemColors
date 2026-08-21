@@ -18,13 +18,20 @@ Normal and cursed equipment use their tier color.
 
 ## Item-state markers
 
-Item state is communicated with small Stoneshard-style sprites while preserving the selected name color:
+Item state is communicated with small Stoneshard-style 16x16 sprites while preserving the selected name color:
 
-- `spr_tic_enchant_1` — one enchantment
-- `spr_tic_enchant_2` — two enchantments
+- `spr_tic_enchant_minor` — one enchantment
+- `spr_tic_enchant_major` — two enchantments
 - `spr_tic_cursed` — cursed item
 
+For a cursed enchanted item, the curse sprite is drawn first and the corresponding enchantment sprite is drawn beside it.
+
 The markers are only shown after an item is identified, so unidentified equipment does not reveal hidden curse or enchantment information.
+
+Markers are rendered in both places where they are most useful:
+
+- beside the item title in the equipment hover tooltip;
+- above equipment while it is lying on the ground (`o_weapon_loot`).
 
 ## Visual language
 
@@ -42,9 +49,9 @@ The mod does **not** infer tier from runtime `LVL`. During patching it reads the
 
 Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds in `gml_Object_o_hoverWeapon_Other_20` through `scr_hoversGetEnchantedAttributes()`.
+Curse state is read from `data["is_cursed"]`. In hover tooltips, enchantment level is derived from the `enchantedAttributesArray` that vanilla builds via `scr_hoversGetEnchantedAttributes()`. On ground loot, the same state is recovered from the persisted `Char0`/`Char1` fields.
 
-The marker sprites are packed by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations.
+The marker sprites are packed automatically by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations. The ground marker layer is added as a Draw End event so it does not replace vanilla loot rendering.
 
 ## Build / MSL discovery
 
@@ -63,10 +70,12 @@ ModShardLauncher/
         ├── TierItemColors.cs
         ├── README.md
         ├── icon.png
-        ├── spr_tic_enchant_1.png
-        ├── spr_tic_enchant_2.png
+        ├── spr_tic_enchant_minor.png
+        ├── spr_tic_enchant_major.png
         ├── spr_tic_cursed.png
         └── Codes/
+            ├── scr_tic_draw_hover_markers.gml
+            ├── scr_tic_draw_ground_markers.gml
             └── scr_tic_debug_hover.gml
 ```
 
