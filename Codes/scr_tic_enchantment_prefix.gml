@@ -1,6 +1,7 @@
 function scr_tic_enchantment_prefix()
 {
     var _owner = argument0
+    var _enchantedAttributesArray = argument1
 
     if (!instance_exists(_owner))
         return ""
@@ -18,9 +19,12 @@ function scr_tic_enchantment_prefix()
     if (ds_map_find_value_ext(_data, "is_cursed", false))
         _prefix += "☠"
 
-    var _count = 0
-    while (_count < 2 && ds_map_exists(_data, "Char" + string(_count)))
-        _count++
+    // Other_20 already asks vanilla for scr_hoversGetEnchantedAttributes().
+    // That result is a flat [name, value, name, value, ...] array, so every
+    // two entries represent one displayed enchantment attribute.
+    var _count = floor(array_length(_enchantedAttributesArray) / 2)
+    if (_count > 2)
+        _count = 2
 
     switch (_count)
     {
