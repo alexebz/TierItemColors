@@ -3,6 +3,16 @@ function scr_tic_apply_style(_data)
     if (_data == noone || !ds_exists(_data, ds_type_map))
         return
 
+    // Unique items keep Stoneshard's vanilla purple so they remain immediately
+    // distinguishable from normal equipment regardless of tier.
+    var _quality = real(ds_map_find_value_ext(_data, "quality", 0))
+    var _unique = (6 << 0)
+    if (_quality == _unique)
+    {
+        ds_map_set(_data, "Colour", make_colour_rgb(130, 72, 188)) // #8248BC
+        return
+    }
+
     var _tier = real(ds_map_find_value_ext(_data, "LVL", 0))
     var _colour = noone
 
@@ -34,8 +44,9 @@ function scr_tic_apply_style(_data)
             break
     }
 
-    // Items without a normal 1..5 tier are left untouched. This keeps the mod
-    // compatible with special/non-tiered consumables and other modded objects.
+    // Cursed equipment intentionally uses its tier color; curse state is shown
+    // by a ☠ name prefix instead of replacing the tier color.
+    // Items without a normal 1..5 tier are left untouched.
     if (_colour != noone)
         ds_map_set(_data, "Colour", _colour)
 }
