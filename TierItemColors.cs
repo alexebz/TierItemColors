@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using ModShardLauncher;
 using ModShardLauncher.Mods;
-using UndertaleModLib.Models;
 
 namespace TierItemColors;
 
@@ -13,7 +12,7 @@ public class TierItemColors : Mod
 {
     public override string Author => "alexebz";
     public override string Name => "Tier Item Colors";
-    public override string Description => "Colors equipment names by tier and marks curses/enchantments with Stoneshard-style icons.";
+    public override string Description => "Colors equipment names by tier and adds matching color accents to tooltip frame corners.";
     public override string Version => "0.1.0";
     public override string TargetVersion => "0.9.4.25";
 
@@ -29,21 +28,10 @@ public class TierItemColors : Mod
         // column 1 (name), while some code paths use column 3 (resource id), so
         // both are emitted as aliases for the same tier.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
-        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_hover_markers.gml"), "scr_tic_draw_hover_markers");
-
-        ConfigureMarkerSprite("spr_tic_enchant_minor");
-        ConfigureMarkerSprite("spr_tic_enchant_major");
-        ConfigureMarkerSprite("spr_tic_cursed");
+        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_hover_corners.gml"), "scr_tic_draw_hover_corners");
 
         PatchLootColor();
-        PatchHoverMarkers();
-    }
-
-    private static void ConfigureMarkerSprite(string spriteName)
-    {
-        UndertaleSprite sprite = Msl.GetSprite(spriteName);
-        sprite.OriginX = 8;
-        sprite.OriginY = 8;
+        PatchHoverCorners();
     }
 
     private static string BuildTierColorFunction()
@@ -185,7 +173,7 @@ public class TierItemColors : Mod
         Msl.SetStringGMLInFile(patched, LootColor);
     }
 
-    private static void PatchHoverMarkers()
+    private static void PatchHoverCorners()
     {
         string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
         string[] lines = code.Replace("\r\n", "\n").Split('\n');
@@ -210,7 +198,7 @@ public class TierItemColors : Mod
 
         string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
         string injected = indent
-            + "scr_tic_draw_hover_markers(owner, enchantedAttributesArray, contentX, contentY + _offsetY, surfaceScale)\n";
+            + "scr_tic_draw_hover_corners(contentX, contentY, contentWidth, id, titleColor, surfaceScale)\n";
 
         string patched = string.Join("\n", lines, 0, targetLine)
             + (targetLine > 0 ? "\n" : "")
