@@ -1,6 +1,6 @@
 # Tier Item Colors
 
-A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the primary visual language for equipment names and adds a matching tier-colored tooltip border.
+A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes equipment tier the primary visual language for item names and the native tooltip frame.
 
 ## Tier palette
 
@@ -18,36 +18,36 @@ Normal and cursed equipment use their tier color.
 
 **Unique items keep Stoneshard's vanilla purple (`#8248BC`).**
 
-## Tooltip frame color
+## Native tooltip frame tint
 
-Equipment hover tooltips keep Stoneshard's original frame artwork, background, and layout.
+The mod no longer draws a second rectangle over the tooltip.
 
-Tier Item Colors overlays a thin colored line along the **entire frame perimeter** using the same color as the item title:
+Stoneshard's real frame is drawn in `scr_hoversDrawBoard()` with the vanilla frame sprites:
 
-- T1 → Bone border
-- T2 → Moss border
-- T3 → Steel Blue border
-- T4 → Burnished Red border
-- T5 → Antique Gold border
-- Unique → vanilla purple border
+- `s_wline` — top and bottom edges
+- `s_hline` — left and right edges
+- the board corner sprite (`arg6`) — all four corners
 
-Only the outer edge treatment changes color; the tooltip interior and original gothic frame artwork remain visible underneath.
+Tier Item Colors extends `scr_hoversDrawBoard()` with an optional tint argument. Existing callers keep the vanilla white tint. Equipment tooltips pass their already-resolved `titleColor`, so the original Stoneshard frame artwork itself is tinted to match the item's tier or Unique color.
 
-The old enchantment/cursed marker icons have been removed completely. The mod no longer adds state icons to hover tooltips or ground loot.
+The tooltip background and inner content remain unchanged.
+
+The old enchantment/cursed marker icons and all custom rectangle border overlays have been removed.
 
 ## Implementation
 
 Stoneshard 0.9.4.25 centralizes item-name color selection in `scr_loot_color(id)`. Tier Item Colors hooks that function so the same tier color is used consistently by tooltips, ground labels, shops, logs, and other UI that relies on vanilla loot coloring.
 
-The mod does **not** infer tier from runtime `LVL`. During patching it reads the current `gml_GlobalScript_table_weapons` and `gml_GlobalScript_table_armor` directly from the loaded `vanilla.win`. In both tables, column 2 is the equipment tier. The generated resolver accepts both the table's item name and item id as aliases for runtime `data["idName"]`, which makes it compatible with vanilla equipment instances.
+The mod does **not** infer tier from runtime `LVL`. During patching it reads the current `gml_GlobalScript_table_weapons` and `gml_GlobalScript_table_armor` directly from the loaded `vanilla.win`. In both tables, column 2 is the equipment tier. The generated resolver accepts both the table's item name and item id as aliases for runtime `data["idName"]`.
 
-Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
+For tooltip frames, the mod patches:
 
-The tooltip border overlay is drawn by `scr_tic_draw_hover_corners` from `gml_Object_o_hoverWeapon_Other_21`. The helper receives vanilla's already-resolved `titleColor`, so the perimeter always matches the title color without maintaining a second palette lookup.
+- `gml_GlobalScript_scr_hoversDrawBoard` — adds the optional frame tint and applies it to the 8 native edge/corner sprite draws
+- `gml_Object_o_hoverRender_Other_21` — passes `titleColor` only when `contentRender` is `o_hoverWeapon`
+
+Other UI that uses `scr_hoversDrawBoard()` remains white because the new tint parameter defaults to vanilla white.
 
 ## Build / MSL discovery
-
-MSL scans the **immediate child folders** of its `ModSources` directory and expects the `.csproj` file to be directly inside that child folder.
 
 Clone this repository so the layout is exactly:
 
@@ -61,9 +61,7 @@ ModShardLauncher/
         ├── TierItemColors.csproj
         ├── TierItemColors.cs
         ├── README.md
-        ├── icon.png
-        └── Codes/
-            └── scr_tic_draw_hover_corners.gml
+        └── icon.png
 ```
 
 Until PR #1 is merged, use the feature branch explicitly:
@@ -82,8 +80,6 @@ git switch feat/tier-item-colors
 git pull
 ```
 
-Then **restart ModShardLauncher**. Open your `vanilla.win`, go to the `ModSources` (C#) page, and `Tier Item Colors` should appear with a **Compile** button. Compiling creates the `.sml` under `Mods`.
-
-The project references `ModShardLauncher.dll` and `UndertaleModLib.dll` via `..\..\`, which matches the directory layout above.
+Then restart ModShardLauncher, compile the mod, patch a clean `vanilla.win`, and launch Stoneshard.
 
 Target game version: **0.9.4.25**.
