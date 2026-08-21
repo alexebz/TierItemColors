@@ -1,5 +1,7 @@
-function scr_tic_apply_style(_data)
+function scr_tic_apply_style()
 {
+    var _data = argument0
+
     if (_data != noone && ds_exists(_data, ds_type_map))
     {
         // Unique items keep Stoneshard's vanilla purple so they remain immediately
