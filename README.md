@@ -40,11 +40,13 @@ The markers are only shown after an item is identified, so unidentified equipmen
 
 ## Implementation
 
-Stoneshard stores the equipment tier/level in the item's `data["LVL"]` field and the currently selected quality color in `data["Colour"]`. Tier Item Colors replaces `Colour` with the configured tier color for non-Unique tiered items. Items whose `quality` is Unique keep vanilla purple.
+Stoneshard 0.9.4.25 centralizes item-name color selection in `scr_loot_color(id)`. Tier Item Colors hooks that function so the same tier color is used consistently by tooltips, ground labels, shops, logs, and other UI that relies on vanilla loot coloring.
+
+Vanilla equipment exposes its tier through the item instance variable `LVL`. Some modded/enchantment-generated items also persist the tier into `data["LVL"]`, so the mod supports both representations. Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
 Curse state is read from `data["is_cursed"]`. Vanilla enchantment attributes are stored as `Char0`, `Char1`, etc. The mod uses those fields to build the `☠` and `✦` name prefix without altering the underlying item stats, quality, curse, or enchantment data.
 
-The item-name hook is located at patch time inside `gml_Object_o_hoverWeapon_Other_21` rather than using a hard-coded line number. This is intended to make the mod more resilient to small Stoneshard UI changes.
+The tooltip prefix is inserted in `gml_Object_o_hoverWeapon_Other_20` before vanilla wraps and measures `title`, so symbols are included in tooltip layout calculations.
 
 ## Build / MSL discovery
 
@@ -63,7 +65,7 @@ ModShardLauncher/
         ├── TierItemColors.cs
         ├── README.md
         └── Codes/
-            ├── scr_tic_apply_style.gml
+            ├── scr_tic_tier_color.gml
             └── scr_tic_enchantment_prefix.gml
 ```
 
