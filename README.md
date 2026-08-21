@@ -20,7 +20,7 @@ Normal and cursed equipment use their tier color.
 
 ## Native tooltip frame tint
 
-The mod no longer draws a second rectangle over the tooltip.
+The mod does not draw a second rectangle over the tooltip.
 
 Stoneshard's real frame is drawn in `scr_hoversDrawBoard()` with the vanilla frame sprites:
 
@@ -30,7 +30,7 @@ Stoneshard's real frame is drawn in `scr_hoversDrawBoard()` with the vanilla fra
 
 Tier Item Colors extends `scr_hoversDrawBoard()` with an optional tint argument. Existing callers keep the vanilla white tint. Equipment tooltips pass their already-resolved `titleColor`, so the original Stoneshard frame artwork itself is tinted to match the item's tier or Unique color.
 
-The tooltip background and inner content remain unchanged.
+This preserves the exact vanilla frame geometry, corner artwork, clipping, UI scaling, and tooltip sizing. The tooltip background and inner content remain unchanged.
 
 The old enchantment/cursed marker icons and all custom rectangle border overlays have been removed.
 
