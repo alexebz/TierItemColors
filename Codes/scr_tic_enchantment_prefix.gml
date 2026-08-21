@@ -15,10 +15,13 @@ function scr_tic_enchantment_prefix()
         return ""
 
     var _prefix = ""
+    var _curseMarker = chr(9888) // U+26A0 WARNING SIGN
+    var _enchantMarker = chr(9733) // U+2605 BLACK STAR
 
-    // StoneshardFont_CH/JP include U+26A0 WARNING SIGN.
+    // Build Unicode markers at runtime. Keeping non-ASCII glyphs out of the GML
+    // source avoids ModShardLauncher/UndertaleModLib encoding them incorrectly.
     if (ds_map_find_value_ext(_data, "is_cursed", false))
-        _prefix += "⚠"
+        _prefix += _curseMarker
 
     // Other_20 already asks vanilla for scr_hoversGetEnchantedAttributes().
     // That result is a flat [name, value, name, value, ...] array, so every
@@ -27,14 +30,13 @@ function scr_tic_enchantment_prefix()
     if (_count > 2)
         _count = 2
 
-    // StoneshardFont_CH/JP include U+2605 BLACK STAR.
     switch (_count)
     {
         case 1:
-            _prefix += "★"
+            _prefix += _enchantMarker
             break
         case 2:
-            _prefix += "★★"
+            _prefix += _enchantMarker + _enchantMarker
             break
     }
 
