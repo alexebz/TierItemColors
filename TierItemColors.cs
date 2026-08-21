@@ -177,24 +177,41 @@ public class TierItemColors : Mod
     private static void PatchHoverBoardColorSupport()
     {
         string code = Msl.GetStringGMLFromFile(HoverBoard);
-        string signature =
-            "function scr_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 6970)";
+        string[] lines = code.Replace("\r\n", "\n").Split('\n');
 
-        if (!code.Contains(signature, StringComparison.Ordinal))
+        // MSL/UndertaleModLib can normalize whitespace when decompiling GML, so
+        // do not require the complete function signature to match byte-for-byte.
+        int signatureLine = -1;
+        for (int i = 0; i < lines.Length; i++)
         {
-            throw new InvalidOperationException(
-                "Tier Item Colors could not locate the scr_hoversDrawBoard signature. " +
-                "The Stoneshard tooltip frame implementation may have changed.");
+            if (lines[i].Contains("function scr_hoversDrawBoard(", StringComparison.Ordinal))
+            {
+                signatureLine = i;
+                break;
+            }
         }
 
-        code = code.Replace(
-            signature,
-            "function scr_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 6970, arg7 = 16777215)",
-            StringComparison.Ordinal);
+        if (signatureLine < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate scr_hoversDrawBoard's function declaration.");
+        }
 
-        string[] lines = code.Replace("\r\n", "\n").Split('\n');
+        if (!lines[signatureLine].Contains("arg7", StringComparison.Ordinal))
+        {
+            int closeParen = lines[signatureLine].LastIndexOf(')');
+            if (closeParen < 0)
+            {
+                throw new InvalidOperationException(
+                    "Tier Item Colors found scr_hoversDrawBoard but could not parse its argument list.");
+            }
+
+            lines[signatureLine] = lines[signatureLine].Insert(
+                closeParen,
+                ", arg7 = 16777215");
+        }
+
         int tintedDrawCalls = 0;
-
         for (int i = 0; i < lines.Length; i++)
         {
             bool isFrameDraw =
@@ -202,9 +219,22 @@ public class TierItemColors : Mod
                 || lines[i].Contains("draw_sprite_ext(s_hline", StringComparison.Ordinal)
                 || lines[i].Contains("draw_sprite_ext(arg6", StringComparison.Ordinal);
 
-            if (isFrameDraw && lines[i].Contains("c_white", StringComparison.Ordinal))
+            if (!isFrameDraw)
+                continue;
+
+            if (lines[i].Contains("c_white", StringComparison.Ordinal))
             {
                 lines[i] = lines[i].Replace("c_white", "arg7", StringComparison.Ordinal);
+                tintedDrawCalls++;
+            }
+            else if (lines[i].Contains("16777215", StringComparison.Ordinal))
+            {
+                // Some UndertaleModLib builds decompile c_white as its numeric value.
+                lines[i] = lines[i].Replace("16777215", "arg7", StringComparison.Ordinal);
+                tintedDrawCalls++;
+            }
+            else if (lines[i].Contains("arg7", StringComparison.Ordinal))
+            {
                 tintedDrawCalls++;
             }
         }
@@ -214,7 +244,7 @@ public class TierItemColors : Mod
         if (tintedDrawCalls != 8)
         {
             throw new InvalidOperationException(
-                "Tier Item Colors expected 8 tintable frame draw calls in " + HoverBoard +
+                "Tier Item Colors expected 8 tintable native frame draw calls in " + HoverBoard +
                 " but found " + tintedDrawCalls + ".");
         }
 
