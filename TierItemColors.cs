@@ -45,11 +45,9 @@ public class TierItemColors : Mod
         PatchHoverNameDraw();
     }
 
-    /// <summary>
-    /// Prefixes the tooltip's item-name draw expression with curse/enchantment
-    /// markers. We locate the name draw call in the currently loaded vanilla.win
-    /// instead of hard-coding a line number, making the patch less brittle.
-    /// </summary>
+    // Prefix the tooltip's item-name draw expression with curse/enchantment
+    // markers. Locate the name draw call in the currently loaded vanilla.win
+    // instead of hard-coding a line number, making the patch less brittle.
     private static void PatchHoverNameDraw()
     {
         string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
@@ -85,10 +83,8 @@ public class TierItemColors : Mod
             || line.Contains("title", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Rewrites the third top-level argument of scr_drawText(...), which is the
-    /// text expression, without assuming the variable name used by vanilla.
-    /// </summary>
+    // Rewrite the third top-level argument of scr_drawText(...), which is the
+    // text expression, without assuming the variable name used by vanilla.
     private static bool TryPrefixThirdArgument(string line, out string patched)
     {
         patched = line;
