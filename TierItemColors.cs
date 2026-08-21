@@ -34,12 +34,14 @@ public class TierItemColors : Mod
         PatchLootColor();
 
         // Other_20 has already built enchantedAttributesArray at this point.
-        // Log the real runtime item state, then prefix before vanilla wraps and
-        // measures title so markers participate in the normal tooltip layout.
+        // Apply the prefix first, then log the actual final title that vanilla
+        // will wrap and draw. This lets runtime diagnostics distinguish a title
+        // hook problem from a missing glyph in the active Stoneshard font.
         Msl.LoadGML(HoverWeaponRefresh)
             .MatchFrom("titleWidth = minWidth -")
-            .InsertAbove(@"scr_tic_debug_hover(owner, enchantedAttributesArray, title)
-title = scr_tic_enchantment_prefix(owner, enchantedAttributesArray) + title")
+            .InsertAbove(@"var _ticPrefix = scr_tic_enchantment_prefix(owner, enchantedAttributesArray)
+title = _ticPrefix + title
+scr_tic_debug_hover(owner, enchantedAttributesArray, title, _ticPrefix)")
             .Save();
     }
 
