@@ -7,10 +7,8 @@ function scr_tic_draw_hover_corners()
     var _colour = argument4
     var _surfaceScale = argument5
 
-    // Keep Stoneshard's original frame intact. We only overlay short coloured
-    // L-shaped accents on its inner corners so the tier is visible without
-    // turning the entire tooltip border into a bright rectangle.
-    var _length = max(8, round(10 * _surfaceScale))
+    // Keep Stoneshard's original tooltip artwork intact and overlay only a thin
+    // tier-colored line along the complete frame perimeter.
     var _thickness = max(1, round(2 * _surfaceScale))
     var _inset = max(1, round(1 * _surfaceScale))
 
@@ -18,21 +16,6 @@ function scr_tic_draw_hover_corners()
     var _right = round(_contentX + _contentWidth - _inset)
     var _top = round(_contentY + _inset)
 
-    var _oldColour = draw_get_color()
-    var _oldAlpha = draw_get_alpha()
-    draw_set_color(_colour)
-    draw_set_alpha(0.95)
-
-    // Top-left.
-    draw_rectangle(_left, _top, _left + _length, _top + _thickness, false)
-    draw_rectangle(_left, _top, _left + _thickness, _top + _length, false)
-
-    // Top-right.
-    draw_rectangle(_right - _length, _top, _right, _top + _thickness, false)
-    draw_rectangle(_right - _thickness, _top, _right, _top + _length, false)
-
-    // contentHeight is owned by the hover instance. Read it dynamically so the
-    // helper remains tolerant of minor decompiler/layout changes.
     var _contentHeight = 0
     if (instance_exists(_hover) && variable_instance_exists(_hover, "contentHeight"))
         _contentHeight = real(variable_instance_get(_hover, "contentHeight"))
@@ -41,15 +24,20 @@ function scr_tic_draw_hover_corners()
     {
         var _bottom = round(_contentY + _contentHeight - _inset)
 
-        // Bottom-left.
-        draw_rectangle(_left, _bottom - _thickness, _left + _length, _bottom, false)
-        draw_rectangle(_left, _bottom - _length, _left + _thickness, _bottom, false)
+        var _oldColour = draw_get_color()
+        var _oldAlpha = draw_get_alpha()
+        draw_set_color(_colour)
+        draw_set_alpha(0.9)
 
-        // Bottom-right.
-        draw_rectangle(_right - _length, _bottom - _thickness, _right, _bottom, false)
-        draw_rectangle(_right - _thickness, _bottom - _length, _right, _bottom, false)
+        // Top and bottom frame edges.
+        draw_rectangle(_left, _top, _right, _top + _thickness, false)
+        draw_rectangle(_left, _bottom - _thickness, _right, _bottom, false)
+
+        // Left and right frame edges.
+        draw_rectangle(_left, _top, _left + _thickness, _bottom, false)
+        draw_rectangle(_right - _thickness, _top, _right, _bottom, false)
+
+        draw_set_color(_oldColour)
+        draw_set_alpha(_oldAlpha)
     }
-
-    draw_set_color(_oldColour)
-    draw_set_alpha(_oldAlpha)
 }
