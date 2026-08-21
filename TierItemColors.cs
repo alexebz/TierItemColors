@@ -210,7 +210,7 @@ public class TierItemColors : Mod
 
         string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
         string injected = indent
-            + "scr_tic_draw_hover_markers(owner, enchantedAttributesArray, contentX + (contentWidth / 2), contentY + _offsetY, title, textScale, surfaceScale)\n";
+            + "scr_tic_draw_hover_markers(owner, enchantedAttributesArray, contentX, contentY + _offsetY, surfaceScale)\n";
 
         string patched = string.Join("\n", lines, 0, targetLine)
             + (targetLine > 0 ? "\n" : "")
