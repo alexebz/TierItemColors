@@ -118,11 +118,11 @@ public class TierItemColors : Mod
     {
         switch (tier)
         {
-            case 1: return "make_colour_rgb(200, 192, 175)"; // Bone #C8C0AF, baseline
-            case 2: return "make_colour_rgb(126, 169, 103)"; // Moss #7EA967, +10% saturation
-            case 3: return "make_colour_rgb(85, 144, 181)";  // Steel Blue #5590B5, +20% saturation
-            case 4: return "make_colour_rgb(195, 97, 76)";   // Burnished Red #C3614C, +30% saturation
-            case 5: return "make_colour_rgb(242, 175, 46)"; // Antique Gold #F2AF2E, +40% saturation
+            case 1: return "make_colour_rgb(200, 192, 175)";
+            case 2: return "make_colour_rgb(126, 169, 103)";
+            case 3: return "make_colour_rgb(85, 144, 181)";
+            case 4: return "make_colour_rgb(195, 97, 76)";
+            case 5: return "make_colour_rgb(242, 175, 46)";
             default: throw new ArgumentOutOfRangeException("tier");
         }
     }
@@ -134,11 +134,9 @@ public class TierItemColors : Mod
 
     private static string BuildTintedHoverBoardFunction()
     {
-        // This is the 0.9.4.25 scr_hoversDrawBoard geometry from the user's
-        // exported Code/, isolated into a private helper. Do not use named GML
-        // parameters here: MSL/UndertaleModLib can compile higher named args as
-        // instance-variable reads. argument[] is already used by vanilla scripts
-        // and reliably preserves the actual call arguments.
+        // Exact 0.9.4.25 scr_hoversDrawBoard geometry, but with the eight native
+        // frame pieces tinted by argument[7]. argument[] avoids MSL treating
+        // high named arguments as instance variables at runtime.
         return
             "function scr_tic_hoversDrawBoard()\n" +
             "{\n" +
@@ -210,24 +208,24 @@ public class TierItemColors : Mod
         string code = Msl.GetStringGMLFromFile(HoverRenderDraw);
         string[] lines = code.Replace("\r\n", "\n").Split('\n');
 
-        int targetLine = -1;
+        int boardLine = -1;
         for (int i = 0; i < lines.Length; i++)
         {
             if (lines[i].Contains("scr_hoversDrawBoard(", StringComparison.Ordinal))
             {
-                targetLine = i;
+                boardLine = i;
                 break;
             }
         }
 
-        if (targetLine < 0)
+        if (boardLine < 0)
         {
             throw new InvalidOperationException(
                 "Tier Item Colors could not locate scr_hoversDrawBoard in " + HoverRenderDraw + ".");
         }
 
-        string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
-        string originalCall = lines[targetLine].Trim();
+        string indent = lines[boardLine][..(lines[boardLine].Length - lines[boardLine].TrimStart().Length)];
+        string originalCall = lines[boardLine].Trim();
         string tintedCall = originalCall.Replace(
             "scr_hoversDrawBoard(",
             "scr_tic_hoversDrawBoard(",
@@ -240,8 +238,6 @@ public class TierItemColors : Mod
                 "Tier Item Colors found the hover-board call but could not parse it.");
         }
 
-        // o_hoverRender's vanilla call has six arguments. Supply the native
-        // default corner sprite explicitly and then the tier tint as arg 8.
         tintedCall = tintedCall.Insert(callCloseParen, ", s_hcorner, _ticFrameColor");
 
         string injected =
@@ -254,12 +250,61 @@ public class TierItemColors : Mod
             indent + "}\n" +
             indent + tintedCall;
 
-        string patched = string.Join("\n", lines, 0, targetLine)
-            + (targetLine > 0 ? "\n" : "")
+        string patched = string.Join("\n", lines, 0, boardLine)
+            + (boardLine > 0 ? "\n" : "")
             + injected
             + "\n"
-            + string.Join("\n", lines, targetLine + 1, lines.Length - targetLine - 1);
+            + string.Join("\n", lines, boardLine + 1, lines.Length - boardLine - 1);
 
-        Msl.SetStringGMLInFile(patched, HoverRenderDraw);
+        string[] patchedLines = patched.Replace("\r\n", "\n").Split('\n');
+        int tierBlockLine = -1;
+        for (int i = 0; i < patchedLines.Length; i++)
+        {
+            if (patchedLines[i].Trim().StartsWith("if (tierDraw)", StringComparison.Ordinal))
+            {
+                tierBlockLine = i;
+                break;
+            }
+        }
+
+        if (tierBlockLine < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate the tierDraw block in " + HoverRenderDraw + ".");
+        }
+
+        int tierTintedDraws = 0;
+        for (int i = tierBlockLine + 1; i < patchedLines.Length; i++)
+        {
+            if (patchedLines[i].Trim().StartsWith("if (headerDraw)", StringComparison.Ordinal))
+                break;
+
+            if (!patchedLines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
+                continue;
+
+            if (patchedLines[i].Contains("c_white", StringComparison.Ordinal))
+            {
+                patchedLines[i] = patchedLines[i].Replace("c_white", "_ticFrameColor", StringComparison.Ordinal);
+                tierTintedDraws++;
+            }
+            else if (patchedLines[i].Contains("16777215", StringComparison.Ordinal))
+            {
+                patchedLines[i] = patchedLines[i].Replace("16777215", "_ticFrameColor", StringComparison.Ordinal);
+                tierTintedDraws++;
+            }
+            else if (patchedLines[i].Contains("_ticFrameColor", StringComparison.Ordinal))
+            {
+                tierTintedDraws++;
+            }
+        }
+
+        if (tierTintedDraws != 2)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors expected 2 tier-badge sprite draws in " + HoverRenderDraw +
+                " but found " + tierTintedDraws + ".");
+        }
+
+        Msl.SetStringGMLInFile(string.Join("\n", patchedLines), HoverRenderDraw);
     }
 }
