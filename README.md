@@ -4,15 +4,13 @@ A ModShardLauncher mod for **Stoneshard 0.9.4.25** that makes item tier the prim
 
 ## Tier palette
 
-| Tier | Color | Hex | RGB | Saturation progression |
-| --- | --- | --- | --- | --- |
-| T1 | Bone | `#C8C0AF` | `200, 192, 175` | baseline |
-| T2 | Moss | `#7EA967` | `126, 169, 103` | +10% |
-| T3 | Steel Blue | `#5590B5` | `85, 144, 181` | +20% |
-| T4 | Burnished Red | `#C3614C` | `195, 97, 76` | +30% |
-| T5 | Antique Gold | `#F2AF2E` | `242, 175, 46` | +40% |
-
-The higher tiers progressively increase saturation while keeping approximately the same hue/lightness as the original palette, so progression becomes more vivid without simply making every tier brighter.
+| Tier | Color | Hex | RGB |
+| --- | --- | --- | --- |
+| T1 | Bone | `#C8C0AF` | `200, 192, 175` |
+| T2 | Moss | `#7EA967` | `126, 169, 103` |
+| T3 | Steel Blue | `#5590B5` | `85, 144, 181` |
+| T4 | Burnished Red | `#C3614C` | `195, 97, 76` |
+| T5 | Antique Gold | `#F2AF2E` | `242, 175, 46` |
 
 Normal and cursed equipment use their tier color.
 
@@ -20,16 +18,11 @@ Normal and cursed equipment use their tier color.
 
 ## Item-state markers
 
-Item state is communicated with symbols while preserving the selected name color:
+Item state is communicated with small Stoneshard-style sprites while preserving the selected name color:
 
-- Normal: `Footman Sword`
-- One enchantment: `★ Footman Sword`
-- Two enchantments: `★★ Footman Sword`
-- Cursed: `⚠ Footman Sword`
-- Cursed + one enchantment: `⚠★ Footman Sword`
-- Cursed + two enchantments: `⚠★★ Footman Sword`
-
-Unique items can still receive the same enchantment/curse markers, but their name remains purple.
+- `spr_tic_enchant_1` — one enchantment
+- `spr_tic_enchant_2` — two enchantments
+- `spr_tic_cursed` — cursed item
 
 The markers are only shown after an item is identified, so unidentified equipment does not reveal hidden curse or enchantment information.
 
@@ -37,8 +30,9 @@ The markers are only shown after an item is identified, so unidentified equipmen
 
 - **Tier color** → progression tier for normal/cursed equipment
 - **Purple** → Unique item
-- **⚠** → Cursed
-- **★ / ★★** → one/two displayed enchantment attributes
+- **Enchant I sprite** → one displayed enchantment
+- **Enchant II sprite** → two displayed enchantments
+- **Cursed sprite** → cursed item
 
 ## Implementation
 
@@ -48,11 +42,9 @@ The mod does **not** infer tier from runtime `LVL`. During patching it reads the
 
 Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds in `gml_Object_o_hoverWeapon_Other_20` through `scr_hoversGetEnchantedAttributes()`. This means the number of stars matches the enchantment attributes actually displayed in the tooltip rather than relying on `Char0`/`Char1` storage details.
+Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds in `gml_Object_o_hoverWeapon_Other_20` through `scr_hoversGetEnchantedAttributes()`.
 
-The selected markers use `⚠` (U+26A0 WARNING SIGN) for cursed items and `★` (U+2605 BLACK STAR) for enchantments. The GML helper builds them from Unicode codepoints at runtime to avoid MSL/UndertaleModLib source-encoding issues.
-
-The tooltip prefix is inserted before vanilla wraps and measures `title`, so symbols are included in tooltip layout calculations.
+The marker sprites are packed by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations.
 
 ## Build / MSL discovery
 
@@ -69,10 +61,12 @@ ModShardLauncher/
     └── TierItemColors/
         ├── TierItemColors.csproj
         ├── TierItemColors.cs
-        ├── icon.png
         ├── README.md
+        ├── icon.png
+        ├── spr_tic_enchant_1.png
+        ├── spr_tic_enchant_2.png
+        ├── spr_tic_cursed.png
         └── Codes/
-            ├── scr_tic_enchantment_prefix.gml
             └── scr_tic_debug_hover.gml
 ```
 
