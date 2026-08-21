@@ -46,8 +46,36 @@ Curse state is read from `data["is_cursed"]`. Vanilla enchantment attributes are
 
 The item-name hook is located at patch time inside `gml_Object_o_hoverWeapon_Other_21` rather than using a hard-coded line number. This is intended to make the mod more resilient to small Stoneshard UI changes.
 
-## Build
+## Build / MSL discovery
 
-Place this project under ModShardLauncher's `ModSources` directory and compile it through ModShardLauncher. The generated `.sml` will appear under `Mods`.
+MSL scans the **immediate child folders** of its `ModSources` directory and expects the `.csproj` file to be directly inside that child folder.
+
+Clone this repository so the layout is exactly:
+
+```text
+ModShardLauncher/
+├── ModShardLauncher.exe
+├── ModShardLauncher.dll
+├── UndertaleModLib.dll
+└── ModSources/
+    └── TierItemColors/
+        ├── TierItemColors.csproj
+        ├── TierItemColors.cs
+        ├── README.md
+        └── Codes/
+            ├── scr_tic_apply_style.gml
+            └── scr_tic_enchantment_prefix.gml
+```
+
+For example, from the MSL directory:
+
+```powershell
+cd ModSources
+git clone -b feat/tier-item-colors https://github.com/alexebz/TierItemColors.git
+```
+
+Then **restart ModShardLauncher**. Open your `vanilla.win`, go to the `ModSources` (C#) page, and `Tier Item Colors` should appear with a **Compile** button. Compiling creates the `.sml` under `Mods`.
+
+The project references `ModShardLauncher.dll` and `UndertaleModLib.dll` via `..\..\`, which matches the directory layout above.
 
 Target game version: **0.9.4.25**.
