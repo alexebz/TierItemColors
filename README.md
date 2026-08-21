@@ -67,11 +67,20 @@ ModShardLauncher/
             └── scr_tic_enchantment_prefix.gml
 ```
 
-For example, from the MSL directory:
+Until PR #1 is merged, use the feature branch explicitly:
 
 ```powershell
 cd ModSources
 git clone -b feat/tier-item-colors https://github.com/alexebz/TierItemColors.git
+```
+
+If you already cloned the repository:
+
+```powershell
+cd ModSources\TierItemColors
+git fetch origin
+git switch feat/tier-item-colors
+git pull
 ```
 
 Then **restart ModShardLauncher**. Open your `vanilla.win`, go to the `ModSources` (C#) page, and `Tier Item Colors` should appear with a **Compile** button. Compiling creates the `.sml` under `Mods`.
