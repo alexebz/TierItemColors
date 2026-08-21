@@ -1,6 +1,7 @@
 ﻿// Copyright (C)
 // See LICENSE file for extended copyright information.
 
+using System;
 using ModShardLauncher;
 using ModShardLauncher.Mods;
 
@@ -22,15 +23,7 @@ public class TierItemColors : Mod
         Msl.AddFunction(ModFiles.GetCode("scr_tic_tier_color.gml"), "scr_tic_tier_color");
         Msl.AddFunction(ModFiles.GetCode("scr_tic_enchantment_prefix.gml"), "scr_tic_enchantment_prefix");
 
-        // scr_loot_color is the shared vanilla color source used by tooltips,
-        // ground labels, logs, and other item-name UI. Override its result only
-        // when the current item has a recognized equipment tier (or is Unique).
-        Msl.LoadGML(LootColor)
-            .MatchFrom("if (__is_undefined(_color))")
-            .InsertAbove(@"var _ticColor = scr_tic_tier_color()
-        if (_ticColor != noone)
-            _color = _ticColor")
-            .Save();
+        PatchLootColor();
 
         // Prefix the already-resolved title before vanilla wraps/measures it, so
         // curse/enchantment symbols are included in tooltip layout calculations.
@@ -38,5 +31,42 @@ public class TierItemColors : Mod
             .MatchFrom("titleWidth = minWidth -")
             .InsertAbove("title = scr_tic_enchantment_prefix(owner) + title")
             .Save();
+    }
+
+    private static void PatchLootColor()
+    {
+        string code = Msl.GetStringGMLFromFile(LootColor);
+        string[] lines = code.Replace("\r\n", "\n").Split('\n');
+
+        int targetLine = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("__is_undefined", StringComparison.Ordinal)
+                && lines[i].Contains("_color", StringComparison.Ordinal))
+            {
+                targetLine = i;
+                break;
+            }
+        }
+
+        if (targetLine < 0)
+        {
+            throw new InvalidOperationException(
+                $"Tier Item Colors could not locate the _color undefined check in {LootColor}. " +
+                "The Stoneshard loot-color implementation may have changed.");
+        }
+
+        string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
+        string injected =
+            indent + "var _ticColor = scr_tic_tier_color()\n" +
+            indent + "if (_ticColor != noone)\n" +
+            indent + "    _color = _ticColor\n";
+
+        string patched = string.Join("\n", lines, 0, targetLine)
+            + (targetLine > 0 ? "\n" : "")
+            + injected
+            + string.Join("\n", lines, targetLine, lines.Length - targetLine);
+
+        Msl.SetStringGMLInFile(patched, LootColor);
     }
 }
