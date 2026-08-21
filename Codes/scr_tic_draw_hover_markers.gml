@@ -2,11 +2,9 @@ function scr_tic_draw_hover_markers()
 {
     var _owner = argument0
     var _enchantedAttributesArray = argument1
-    var _centerX = argument2
+    var _contentX = argument2
     var _topY = argument3
-    var _title = argument4
-    var _textScale = argument5
-    var _surfaceScale = argument6
+    var _surfaceScale = argument4
 
     if (instance_exists(_owner))
     {
@@ -36,28 +34,19 @@ function scr_tic_draw_hover_markers()
                 var _iconCount = (_cursed ? 1 : 0) + (_enchants > 0 ? 1 : 0)
                 if (_iconCount > 0)
                 {
-                    // Source sprites are 16x16. At the base UI scale they are drawn
-                    // as 24x24 so the marker is immediately readable without taking
-                    // over the tooltip header.
+                    // Source sprites are 16x16. Draw them as 24x24 at the base UI
+                    // scale so they are clearly visible while still fitting the title row.
                     var _iconScale = 1.5 * _surfaceScale
                     var _iconSize = 16 * _iconScale
                     var _iconGap = 2 * _surfaceScale
-                    var _titleGap = 4 * _surfaceScale
-                    var _rowWidth = (_iconCount * _iconSize) + ((_iconCount - 1) * _iconGap)
+                    var _leftPadding = 6 * _surfaceScale
 
-                    // Measure the title in the exact font vanilla uses. The marker
-                    // row ends _titleGap pixels before the actual left edge of the
-                    // centered title, rather than being positioned from rowWidth/2.
-                    var _oldFont = draw_get_font()
-                    draw_set_font(global.f_digits)
-                    var _textWidth = string_width(_title) * _textScale
-                    var _lineHeight = string_height("Ag") * _textScale
-                    draw_set_font(_oldFont)
-
-                    var _titleLeft = _centerX - (_textWidth * 0.5)
-                    var _rowLeft = _titleLeft - _titleGap - _rowWidth
-                    var _drawX = _rowLeft + (_iconSize * 0.5)
-                    var _drawY = _topY + (_lineHeight * 0.5)
+                    // Anchor markers to the tooltip's inner left edge instead of to
+                    // measured title width. Long/wrapped localized names can report
+                    // misleading widths and previously pushed the icons outside the
+                    // clipped tooltip surface.
+                    var _drawX = _contentX + _leftPadding + (_iconSize * 0.5)
+                    var _drawY = _topY + (8 * _surfaceScale)
 
                     // Cursed is always first. If an item is both cursed and enchanted,
                     // the enchantment marker is drawn immediately after it.
