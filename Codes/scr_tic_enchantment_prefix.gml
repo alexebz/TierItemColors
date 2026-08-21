@@ -26,13 +26,16 @@ function scr_tic_enchantment_prefix()
     if (_count > 2)
         _count = 2
 
+    // Use ASCII '*' for now because the Stoneshard title font does not render
+    // the Unicode sparkle glyph reliably. Once the pipeline is verified in-game,
+    // this can be replaced with a supported decorative glyph if desired.
     switch (_count)
     {
         case 1:
-            _prefix += "✦"
+            _prefix += "*"
             break
         case 2:
-            _prefix += "✦✦"
+            _prefix += "**"
             break
     }
 
