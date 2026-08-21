@@ -41,12 +41,12 @@ function scr_tic_draw_hover_markers()
                     var _iconGap = 2 * _surfaceScale
                     var _leftPadding = 6 * _surfaceScale
 
-                    // Anchor markers to the tooltip's inner left edge instead of to
-                    // measured title width. Long/wrapped localized names can report
-                    // misleading widths and previously pushed the icons outside the
-                    // clipped tooltip surface.
+                    // Anchor markers to a guaranteed-visible position inside the
+                    // tooltip header. This deliberately avoids measuring localized,
+                    // wrapped title text because that can push icons outside the
+                    // clipped hover surface.
                     var _drawX = _contentX + _leftPadding + (_iconSize * 0.5)
-                    var _drawY = _topY + (8 * _surfaceScale)
+                    var _drawY = _topY + (_iconSize * 0.5)
 
                     // Cursed is always first. If an item is both cursed and enchanted,
                     // the enchantment marker is drawn immediately after it.
