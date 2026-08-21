@@ -13,7 +13,7 @@ public class TierItemColors : Mod
 {
     public override string Author => "alexebz";
     public override string Name => "Tier Item Colors";
-    public override string Description => "Colors tiered item names by tier and marks enchantments with ✦ symbols.";
+    public override string Description => "Colors tiered item names by tier, keeps Unique items purple, and marks curses/enchantments with symbols.";
     public override string Version => "0.1.0";
     public override string TargetVersion => "0.9.4.25";
 
@@ -26,9 +26,9 @@ public class TierItemColors : Mod
         Msl.AddFunction(ModFiles.GetCode("scr_tic_apply_style.gml"), "scr_tic_apply_style");
         Msl.AddFunction(ModFiles.GetCode("scr_tic_enchantment_prefix.gml"), "scr_tic_enchantment_prefix");
 
-        // Keep the item's stored Colour synced with its tier. This intentionally
-        // overrides vanilla Uncommon/Rare/Curse/Unique name colors: tier is the
-        // dominant visual language for this mod.
+        // Keep the item's stored Colour synced with its tier. Normal and cursed
+        // equipment use tier colors; Unique equipment deliberately keeps the
+        // vanilla purple color so rarity remains obvious at a glance.
         Msl.LoadGML(InventorySlotDraw)
             .MatchAll()
             .InsertAbove("scr_tic_apply_style(data)")
@@ -46,8 +46,8 @@ public class TierItemColors : Mod
     }
 
     /// <summary>
-    /// Prefixes the tooltip's item-name draw expression with our enchantment
-    /// marker. We locate the name draw call in the currently loaded vanilla.win
+    /// Prefixes the tooltip's item-name draw expression with curse/enchantment
+    /// markers. We locate the name draw call in the currently loaded vanilla.win
     /// instead of hard-coding a line number, making the patch less brittle.
     /// </summary>
     private static void PatchHoverNameDraw()
