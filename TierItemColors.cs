@@ -1,7 +1,6 @@
 ﻿// Copyright (C)
 // See LICENSE file for extended copyright information.
 
-using System;
 using ModShardLauncher;
 using ModShardLauncher.Mods;
 
@@ -16,7 +15,6 @@ public class TierItemColors : Mod
     public override string TargetVersion => "0.9.4.25";
 
     private const string HoverWeaponRefresh = "gml_Object_o_hoverWeapon_Other_20";
-    private const string HoverWeaponDraw = "gml_Object_o_hoverWeapon_Other_21";
     private const string InventorySlotDraw = "gml_Object_o_inv_slot_Draw_0";
 
     public override void PatchMod()
@@ -32,37 +30,18 @@ public class TierItemColors : Mod
             .InsertAbove("scr_tic_apply_style(data)")
             .Save();
 
-        // Tooltips can be refreshed independently of the inventory-slot draw,
-        // so style the hovered owner as well (important for trade/inventory UI).
+        // Other_20 resolves both the displayed title and titleColor. Style the
+        // owner before vanilla calls scr_loot_color(id), then prefix the resolved
+        // title before wrapping/height calculations so long names lay out correctly.
         Msl.LoadGML(HoverWeaponRefresh)
             .MatchAll()
             .InsertAbove(@"with (owner)
     scr_tic_apply_style(data)")
             .Save();
 
-        PatchHoverNameDraw();
-    }
-
-    // Stoneshard 0.9.4.25 draws the equipment name as `title` using
-    // scr_drawTextExt in o_hoverWeapon Other_21. Patch that exact call instead
-    // of relying on the older scr_drawText/name heuristic.
-    private static void PatchHoverNameDraw()
-    {
-        string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
-
-        const string original =
-            "scr_drawTextExt(contentX + (contentWidth / 2), contentY + _offsetY, title, titleColor, titleWidth, 1, 0, global.f_digits, textScale);";
-
-        const string replacement =
-            "scr_drawTextExt(contentX + (contentWidth / 2), contentY + _offsetY, (scr_tic_enchantment_prefix(owner) + title), titleColor, titleWidth, 1, 0, global.f_digits, textScale);";
-
-        if (!code.Contains(original, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException(
-                $"Tier Item Colors could not locate the Stoneshard 0.9.4.25 title draw call in {HoverWeaponDraw}. " +
-                "The hover UI may have changed again.");
-        }
-
-        Msl.SetStringGMLInFile(code.Replace(original, replacement, StringComparison.Ordinal), HoverWeaponDraw);
+        Msl.LoadGML(HoverWeaponRefresh)
+            .MatchFrom("titleWidth = minWidth -")
+            .InsertAbove("title = scr_tic_enchantment_prefix(owner) + title")
+            .Save();
     }
 }
