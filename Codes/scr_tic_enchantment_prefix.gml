@@ -1,5 +1,7 @@
-function scr_tic_enchantment_prefix(_owner)
+function scr_tic_enchantment_prefix()
 {
+    var _owner = argument0
+
     if (!instance_exists(_owner))
         return ""
 
