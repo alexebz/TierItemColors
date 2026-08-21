@@ -41,7 +41,7 @@ public class TierItemColors : Mod
         int targetLine = -1;
         for (int i = 0; i < lines.Length; i++)
         {
-            if (lines[i].Contains("__is_undefined", StringComparison.Ordinal)
+            if (lines[i].Contains("undefined", StringComparison.OrdinalIgnoreCase)
                 && lines[i].Contains("_color", StringComparison.Ordinal))
             {
                 targetLine = i;
