@@ -24,18 +24,22 @@ public class TierItemColors : Mod
     public override void PatchMod()
     {
         // Build the tier resolver from the actual tables in the currently loaded
-        // vanilla.win. Tier is column 2 and item id is column 3 in both tables.
+        // vanilla.win. Tier is column 2. Runtime idName usually corresponds to
+        // column 1 (name), while some code paths use column 3 (resource id), so
+        // both are emitted as aliases for the same tier.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
         Msl.AddFunction(ModFiles.GetCode("scr_tic_enchantment_prefix.gml"), "scr_tic_enchantment_prefix");
+        Msl.AddFunction(ModFiles.GetCode("scr_tic_debug_hover.gml"), "scr_tic_debug_hover");
 
         PatchLootColor();
 
         // Other_20 has already built enchantedAttributesArray at this point.
-        // Prefix before vanilla wraps/measures title so the markers participate
-        // in the normal tooltip layout.
+        // Log the real runtime item state, then prefix before vanilla wraps and
+        // measures title so markers participate in the normal tooltip layout.
         Msl.LoadGML(HoverWeaponRefresh)
             .MatchFrom("titleWidth = minWidth -")
-            .InsertAbove("title = scr_tic_enchantment_prefix(owner, enchantedAttributesArray) + title")
+            .InsertAbove(@"scr_tic_debug_hover(owner, enchantedAttributesArray, title)
+title = scr_tic_enchantment_prefix(owner, enchantedAttributesArray) + title")
             .Save();
     }
 
@@ -106,12 +110,21 @@ public class TierItemColors : Mod
             if (!int.TryParse(fields[1].Trim(), out tier) || tier < 1 || tier > 5)
                 continue;
 
-            string id = fields[2].Trim();
-            if (id.Length == 0 || !seen.Add(id))
-                continue;
-
-            idsByTier[tier].Add(id);
+            AddTierAlias(fields[0].Trim(), tier, idsByTier, seen);
+            AddTierAlias(fields[2].Trim(), tier, idsByTier, seen);
         }
+    }
+
+    private static void AddTierAlias(
+        string value,
+        int tier,
+        List<string>[] idsByTier,
+        HashSet<string> seen)
+    {
+        if (value.Length == 0 || !seen.Add(value))
+            return;
+
+        idsByTier[tier].Add(value);
     }
 
     private static string TierColorExpression(int tier)
