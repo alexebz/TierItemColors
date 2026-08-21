@@ -24,14 +24,13 @@ public class TierItemColors : Mod
 
     public override void PatchMod()
     {
-        // Build the tier resolver from the actual tables in the currently loaded
-        // vanilla.win. Tier is column 2. Runtime idName usually corresponds to
-        // column 1 (name), while some code paths use column 3 (resource id), so
-        // both are emitted as aliases for the same tier.
+        // Build both helpers from the currently loaded vanilla.win. This keeps
+        // the mod aligned with the exact equipment tables and native hover-frame
+        // implementation used by Stoneshard 0.9.4.25.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
+        Msl.AddFunction(BuildTintedHoverBoardFunction(), "scr_tic_hoversDrawBoard");
 
         PatchLootColor();
-        PatchHoverBoardColorSupport();
         PatchEquipmentHoverFrame();
     }
 
@@ -137,6 +136,114 @@ public class TierItemColors : Mod
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
+    private static string BuildTintedHoverBoardFunction()
+    {
+        string code = Msl.GetStringGMLFromFile(HoverBoard);
+        string[] lines = code.Replace("\r\n", "\n").Split('\n');
+
+        int signatureLine = -1;
+        int openingBraceLine = -1;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("function scr_hoversDrawBoard(", StringComparison.Ordinal))
+            {
+                signatureLine = i;
+                break;
+            }
+        }
+
+        if (signatureLine < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate scr_hoversDrawBoard's function declaration.");
+        }
+
+        for (int i = signatureLine; i < lines.Length; i++)
+        {
+            if (lines[i].Trim() == "{")
+            {
+                openingBraceLine = i;
+                break;
+            }
+        }
+
+        if (openingBraceLine < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate scr_hoversDrawBoard's opening block.");
+        }
+
+        // The seventh vanilla parameter is the corner sprite. Extract its
+        // current default from the decompiled game instead of hardcoding an ID.
+        string signature = lines[signatureLine];
+        int arg6Index = signature.IndexOf("arg6", StringComparison.Ordinal);
+        int equalsIndex = arg6Index >= 0 ? signature.IndexOf('=', arg6Index) : -1;
+        int closeParen = signature.LastIndexOf(')');
+
+        if (arg6Index < 0 || equalsIndex < 0 || closeParen <= equalsIndex)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not determine scr_hoversDrawBoard's corner-sprite default.");
+        }
+
+        string cornerSpriteDefault = signature
+            .Substring(equalsIndex + 1, closeParen - equalsIndex - 1)
+            .Trim();
+
+        // Our private clone keeps the first six vanilla arguments, but uses the
+        // seventh argument as the requested frame tint. The native corner-sprite
+        // default is captured in a local variable below.
+        string signatureIndent = signature[..(signature.Length - signature.TrimStart().Length)];
+        lines[signatureLine] = signatureIndent
+            + "function scr_tic_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 16777215)";
+
+        int tintedDrawCalls = 0;
+        int spriteDrawCalls = 0;
+
+        for (int i = openingBraceLine + 1; i < lines.Length; i++)
+        {
+            // In the copied vanilla body, arg6 means the corner sprite. Rename
+            // those references before reusing arg6 as our tint argument.
+            if (lines[i].Contains("arg6", StringComparison.Ordinal))
+                lines[i] = lines[i].Replace("arg6", "_ticCornerSprite", StringComparison.Ordinal);
+
+            if (!lines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
+                continue;
+
+            spriteDrawCalls++;
+
+            // Vanilla has exactly eight white frame draws: top/bottom,
+            // left/right, and four corners. The two background draws use
+            // make_color_rgb(...) and intentionally remain untouched.
+            if (lines[i].Contains("c_white", StringComparison.Ordinal))
+            {
+                lines[i] = lines[i].Replace("c_white", "arg6", StringComparison.Ordinal);
+                tintedDrawCalls++;
+            }
+            else if (lines[i].Contains("16777215", StringComparison.Ordinal))
+            {
+                lines[i] = lines[i].Replace("16777215", "arg6", StringComparison.Ordinal);
+                tintedDrawCalls++;
+            }
+        }
+
+        if (tintedDrawCalls != 8)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors expected 8 white native frame draws while cloning " + HoverBoard +
+                " but found " + tintedDrawCalls + " across " + spriteDrawCalls + " sprite draws.");
+        }
+
+        List<string> patchedLines = new List<string>(lines);
+        string braceIndent = lines[openingBraceLine][..(lines[openingBraceLine].Length - lines[openingBraceLine].TrimStart().Length)];
+        patchedLines.Insert(
+            openingBraceLine + 1,
+            braceIndent + "    var _ticCornerSprite = " + cornerSpriteDefault);
+
+        return string.Join("\n", patchedLines);
+    }
+
     private static void PatchLootColor()
     {
         string code = Msl.GetStringGMLFromFile(LootColor);
@@ -174,84 +281,6 @@ public class TierItemColors : Mod
         Msl.SetStringGMLInFile(patched, LootColor);
     }
 
-    private static void PatchHoverBoardColorSupport()
-    {
-        string code = Msl.GetStringGMLFromFile(HoverBoard);
-        string[] lines = code.Replace("\r\n", "\n").Split('\n');
-
-        // MSL/UndertaleModLib can normalize whitespace when decompiling GML, so
-        // do not require the complete function signature to match byte-for-byte.
-        int signatureLine = -1;
-        for (int i = 0; i < lines.Length; i++)
-        {
-            if (lines[i].Contains("function scr_hoversDrawBoard(", StringComparison.Ordinal))
-            {
-                signatureLine = i;
-                break;
-            }
-        }
-
-        if (signatureLine < 0)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors could not locate scr_hoversDrawBoard's function declaration.");
-        }
-
-        if (!lines[signatureLine].Contains("arg7", StringComparison.Ordinal))
-        {
-            int closeParen = lines[signatureLine].LastIndexOf(')');
-            if (closeParen < 0)
-            {
-                throw new InvalidOperationException(
-                    "Tier Item Colors found scr_hoversDrawBoard but could not parse its argument list.");
-            }
-
-            lines[signatureLine] = lines[signatureLine].Insert(
-                closeParen,
-                ", arg7 = 16777215");
-        }
-
-        int tintedDrawCalls = 0;
-        int spriteDrawCalls = 0;
-
-        for (int i = 0; i < lines.Length; i++)
-        {
-            if (!lines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
-                continue;
-
-            spriteDrawCalls++;
-
-            // In vanilla scr_hoversDrawBoard there are exactly eight white
-            // draw_sprite_ext calls: top, bottom, left, right and four corners.
-            // The two background s_point draws use make_color_rgb(...) instead.
-            // Matching by tint instead of sprite name survives UMT/MSL replacing
-            // s_wline/s_hline with numeric asset IDs during decompilation.
-            if (lines[i].Contains("c_white", StringComparison.Ordinal))
-            {
-                lines[i] = lines[i].Replace("c_white", "arg7", StringComparison.Ordinal);
-                tintedDrawCalls++;
-            }
-            else if (lines[i].Contains("16777215", StringComparison.Ordinal))
-            {
-                lines[i] = lines[i].Replace("16777215", "arg7", StringComparison.Ordinal);
-                tintedDrawCalls++;
-            }
-            else if (lines[i].Contains("arg7", StringComparison.Ordinal))
-            {
-                tintedDrawCalls++;
-            }
-        }
-
-        if (tintedDrawCalls != 8)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors expected 8 white native frame draws in " + HoverBoard +
-                " but found " + tintedDrawCalls + " across " + spriteDrawCalls + " sprite draws.");
-        }
-
-        Msl.SetStringGMLInFile(string.Join("\n", lines), HoverBoard);
-    }
-
     private static void PatchEquipmentHoverFrame()
     {
         string code = Msl.GetStringGMLFromFile(HoverRenderDraw);
@@ -274,6 +303,21 @@ public class TierItemColors : Mod
         }
 
         string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
+        string originalCall = lines[targetLine].Trim();
+        string tintedCall = originalCall.Replace(
+            "scr_hoversDrawBoard(",
+            "scr_tic_hoversDrawBoard(",
+            StringComparison.Ordinal);
+
+        int callCloseParen = tintedCall.LastIndexOf(')');
+        if (callCloseParen < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors found the hover-board call but could not parse it.");
+        }
+
+        tintedCall = tintedCall.Insert(callCloseParen, ", _ticFrameColor");
+
         string injected =
             indent + "var _ticFrameColor = 16777215\n" +
             indent + "if (instance_exists(contentRender))\n" +
@@ -282,7 +326,7 @@ public class TierItemColors : Mod
             indent + "    if ((_ticContentObject == o_hoverWeapon || object_is_ancestor(_ticContentObject, o_hoverWeapon)) && variable_instance_exists(contentRender, \"titleColor\"))\n" +
             indent + "        _ticFrameColor = variable_instance_get(contentRender, \"titleColor\")\n" +
             indent + "}\n" +
-            indent + "scr_hoversDrawBoard(_borderLeft, _borderTop, _borderRight, _borderBottom, surfaceScale, false, 6970, _ticFrameColor)";
+            indent + tintedCall;
 
         string patched = string.Join("\n", lines, 0, targetLine)
             + (targetLine > 0 ? "\n" : "")
