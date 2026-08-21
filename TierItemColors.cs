@@ -2,8 +2,6 @@
 // See LICENSE file for extended copyright information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using ModShardLauncher;
 using ModShardLauncher.Mods;
 
@@ -45,107 +43,26 @@ public class TierItemColors : Mod
         PatchHoverNameDraw();
     }
 
-    // Prefix the tooltip's item-name draw expression with curse/enchantment
-    // markers. Locate the name draw call in the currently loaded vanilla.win
-    // instead of hard-coding a line number, making the patch less brittle.
+    // Stoneshard 0.9.4.25 draws the equipment name as `title` using
+    // scr_drawTextExt in o_hoverWeapon Other_21. Patch that exact call instead
+    // of relying on the older scr_drawText/name heuristic.
     private static void PatchHoverNameDraw()
     {
         string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
-        List<string> lines = code.Replace("\r\n", "\n").Split('\n').ToList();
 
-        int lineIndex = lines.FindIndex(IsLikelyItemNameDraw);
-        if (lineIndex < 0)
+        const string original =
+            "scr_drawTextExt(contentX + (contentWidth / 2), contentY + _offsetY, title, titleColor, titleWidth, 1, 0, global.f_digits, textScale);";
+
+        const string replacement =
+            "scr_drawTextExt(contentX + (contentWidth / 2), contentY + _offsetY, (scr_tic_enchantment_prefix(owner) + title), titleColor, titleWidth, 1, 0, global.f_digits, textScale);";
+
+        if (!code.Contains(original, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"Tier Item Colors could not locate the item-name draw call in {HoverWeaponDraw}. " +
-                "Stoneshard may have changed the hover UI; update the mod hook for the current game version.");
+                $"Tier Item Colors could not locate the Stoneshard 0.9.4.25 title draw call in {HoverWeaponDraw}. " +
+                "The hover UI may have changed again.");
         }
 
-        if (!TryPrefixThirdArgument(lines[lineIndex], out string patchedLine))
-        {
-            throw new InvalidOperationException(
-                $"Tier Item Colors found a likely item-name draw call in {HoverWeaponDraw}, " +
-                "but could not safely patch its text argument.");
-        }
-
-        lines[lineIndex] = patchedLine;
-        Msl.SetStringGMLInFile(string.Join("\n", lines), HoverWeaponDraw);
-    }
-
-    private static bool IsLikelyItemNameDraw(string line)
-    {
-        if (!line.Contains("scr_drawText(", StringComparison.Ordinal))
-            return false;
-
-        // Current Stoneshard hover code uses a name-like variable for the title.
-        // Keep a couple of fallbacks so small upstream renames don't break us.
-        return line.Contains("name", StringComparison.OrdinalIgnoreCase)
-            || line.Contains("title", StringComparison.OrdinalIgnoreCase);
-    }
-
-    // Rewrite the third top-level argument of scr_drawText(...), which is the
-    // text expression, without assuming the variable name used by vanilla.
-    private static bool TryPrefixThirdArgument(string line, out string patched)
-    {
-        patched = line;
-        const string functionName = "scr_drawText(";
-        int callStart = line.IndexOf(functionName, StringComparison.Ordinal);
-        if (callStart < 0)
-            return false;
-
-        int argsStart = callStart + functionName.Length;
-        List<int> commas = new();
-        int depth = 0;
-        bool inString = false;
-        char quote = '\0';
-
-        for (int i = argsStart; i < line.Length; i++)
-        {
-            char c = line[i];
-
-            if (inString)
-            {
-                if (c == quote && (i == 0 || line[i - 1] != '\\'))
-                    inString = false;
-                continue;
-            }
-
-            if (c is '\'' or '"')
-            {
-                inString = true;
-                quote = c;
-                continue;
-            }
-
-            if (c == '(')
-            {
-                depth++;
-                continue;
-            }
-
-            if (c == ')')
-            {
-                if (depth == 0)
-                    break;
-                depth--;
-                continue;
-            }
-
-            if (c == ',' && depth == 0)
-                commas.Add(i);
-        }
-
-        if (commas.Count < 3)
-            return false;
-
-        int textStart = commas[1] + 1;
-        int textEnd = commas[2];
-        string originalText = line[textStart..textEnd].Trim();
-        if (string.IsNullOrWhiteSpace(originalText))
-            return false;
-
-        string replacement = $" (scr_tic_enchantment_prefix(owner) + {originalText})";
-        patched = line[..textStart] + replacement + line[textEnd..];
-        return true;
+        Msl.SetStringGMLInFile(code.Replace(original, replacement, StringComparison.Ordinal), HoverWeaponDraw);
     }
 }
