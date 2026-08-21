@@ -142,8 +142,6 @@ public class TierItemColors : Mod
         string[] lines = code.Replace("\r\n", "\n").Split('\n');
 
         int signatureLine = -1;
-        int openingBraceLine = -1;
-
         for (int i = 0; i < lines.Length; i++)
         {
             if (lines[i].Contains("function scr_hoversDrawBoard(", StringComparison.Ordinal))
@@ -159,71 +157,35 @@ public class TierItemColors : Mod
                 "Tier Item Colors could not locate scr_hoversDrawBoard's function declaration.");
         }
 
-        for (int i = signatureLine; i < lines.Length; i++)
-        {
-            if (lines[i].Trim() == "{")
-            {
-                openingBraceLine = i;
-                break;
-            }
-        }
-
-        if (openingBraceLine < 0)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors could not locate scr_hoversDrawBoard's opening block.");
-        }
-
-        // The seventh vanilla parameter is the corner sprite. Extract its
-        // current default from the decompiled game instead of hardcoding an ID.
+        // The private clone uses an explicit eight-argument signature. arg6 is
+        // the native corner sprite and arg7 is our requested frame tint. This
+        // avoids relying on how UMT/MSL serializes default function arguments.
         string signature = lines[signatureLine];
-        int arg6Index = signature.IndexOf("arg6", StringComparison.Ordinal);
-        int equalsIndex = arg6Index >= 0 ? signature.IndexOf('=', arg6Index) : -1;
-        int closeParen = signature.LastIndexOf(')');
-
-        if (arg6Index < 0 || equalsIndex < 0 || closeParen <= equalsIndex)
-        {
-            throw new InvalidOperationException(
-                "Tier Item Colors could not determine scr_hoversDrawBoard's corner-sprite default.");
-        }
-
-        string cornerSpriteDefault = signature
-            .Substring(equalsIndex + 1, closeParen - equalsIndex - 1)
-            .Trim();
-
-        // Our private clone keeps the first six vanilla arguments, but uses the
-        // seventh argument as the requested frame tint. The native corner-sprite
-        // default is captured in a local variable below.
         string signatureIndent = signature[..(signature.Length - signature.TrimStart().Length)];
         lines[signatureLine] = signatureIndent
-            + "function scr_tic_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4 = 1, arg5 = true, arg6 = 16777215)";
+            + "function scr_tic_hoversDrawBoard(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)";
 
         int tintedDrawCalls = 0;
         int spriteDrawCalls = 0;
 
-        for (int i = openingBraceLine + 1; i < lines.Length; i++)
+        for (int i = signatureLine + 1; i < lines.Length; i++)
         {
-            // In the copied vanilla body, arg6 means the corner sprite. Rename
-            // those references before reusing arg6 as our tint argument.
-            if (lines[i].Contains("arg6", StringComparison.Ordinal))
-                lines[i] = lines[i].Replace("arg6", "_ticCornerSprite", StringComparison.Ordinal);
-
             if (!lines[i].Contains("draw_sprite_ext(", StringComparison.Ordinal))
                 continue;
 
             spriteDrawCalls++;
 
-            // Vanilla has exactly eight white frame draws: top/bottom,
-            // left/right, and four corners. The two background draws use
-            // make_color_rgb(...) and intentionally remain untouched.
+            // Vanilla scr_hoversDrawBoard has exactly eight white frame draws:
+            // top, bottom, left, right and four corners. Its two background
+            // draws use make_color_rgb(...) and intentionally stay unchanged.
             if (lines[i].Contains("c_white", StringComparison.Ordinal))
             {
-                lines[i] = lines[i].Replace("c_white", "arg6", StringComparison.Ordinal);
+                lines[i] = lines[i].Replace("c_white", "arg7", StringComparison.Ordinal);
                 tintedDrawCalls++;
             }
             else if (lines[i].Contains("16777215", StringComparison.Ordinal))
             {
-                lines[i] = lines[i].Replace("16777215", "arg6", StringComparison.Ordinal);
+                lines[i] = lines[i].Replace("16777215", "arg7", StringComparison.Ordinal);
                 tintedDrawCalls++;
             }
         }
@@ -235,13 +197,7 @@ public class TierItemColors : Mod
                 " but found " + tintedDrawCalls + " across " + spriteDrawCalls + " sprite draws.");
         }
 
-        List<string> patchedLines = new List<string>(lines);
-        string braceIndent = lines[openingBraceLine][..(lines[openingBraceLine].Length - lines[openingBraceLine].TrimStart().Length)];
-        patchedLines.Insert(
-            openingBraceLine + 1,
-            braceIndent + "    var _ticCornerSprite = " + cornerSpriteDefault);
-
-        return string.Join("\n", patchedLines);
+        return string.Join("\n", lines);
     }
 
     private static void PatchLootColor()
@@ -316,7 +272,10 @@ public class TierItemColors : Mod
                 "Tier Item Colors found the hover-board call but could not parse it.");
         }
 
-        tintedCall = tintedCall.Insert(callCloseParen, ", _ticFrameColor");
+        // o_hoverRender's vanilla call supplies six arguments and relies on the
+        // standard corner-sprite default. Pass that sprite explicitly, then our
+        // tint, so the private clone always receives all eight arguments.
+        tintedCall = tintedCall.Insert(callCloseParen, ", s_hcorner, _ticFrameColor");
 
         string injected =
             indent + "var _ticFrameColor = 16777215\n" +
