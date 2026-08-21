@@ -36,27 +36,35 @@ function scr_tic_draw_hover_markers()
                 var _iconCount = (_cursed ? 1 : 0) + (_enchants > 0 ? 1 : 0)
                 if (_iconCount > 0)
                 {
-                    // Marker PNGs are 16x16. Scale them with the UI so they keep the
-                    // same apparent size as the title text at every resolution.
-                    var _iconScale = 0.75 * _surfaceScale
+                    // Source sprites are 16x16. At the base UI scale they are drawn
+                    // as 24x24 so the marker is immediately readable without taking
+                    // over the tooltip header.
+                    var _iconScale = 1.5 * _surfaceScale
                     var _iconSize = 16 * _iconScale
-                    var _gap = 2 * _surfaceScale
-                    var _rowWidth = (_iconCount * _iconSize) + ((_iconCount - 1) * _gap)
+                    var _iconGap = 2 * _surfaceScale
+                    var _titleGap = 4 * _surfaceScale
+                    var _rowWidth = (_iconCount * _iconSize) + ((_iconCount - 1) * _iconGap)
 
-                    // Find the actual title width in the same font vanilla uses. The
-                    // marker row is then placed immediately to the left of the title.
+                    // Measure the title in the exact font vanilla uses. The marker
+                    // row ends _titleGap pixels before the actual left edge of the
+                    // centered title, rather than being positioned from rowWidth/2.
                     var _oldFont = draw_get_font()
                     draw_set_font(global.f_digits)
                     var _textWidth = string_width(_title) * _textScale
+                    var _lineHeight = string_height("Ag") * _textScale
                     draw_set_font(_oldFont)
 
-                    var _drawX = _centerX - (_textWidth * 0.5) - _gap - (_rowWidth * 0.5)
-                    var _drawY = _topY + (8 * _surfaceScale)
+                    var _titleLeft = _centerX - (_textWidth * 0.5)
+                    var _rowLeft = _titleLeft - _titleGap - _rowWidth
+                    var _drawX = _rowLeft + (_iconSize * 0.5)
+                    var _drawY = _topY + (_lineHeight * 0.5)
 
+                    // Cursed is always first. If an item is both cursed and enchanted,
+                    // the enchantment marker is drawn immediately after it.
                     if (_cursed)
                     {
                         draw_sprite_ext(spr_tic_cursed, 0, _drawX, _drawY, _iconScale, _iconScale, 0, c_white, 1)
-                        _drawX += _iconSize + _gap
+                        _drawX += _iconSize + _iconGap
                     }
 
                     if (_enchants == 1)
