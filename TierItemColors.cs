@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using ModShardLauncher;
 using ModShardLauncher.Mods;
+using UndertaleModLib.Models;
 
 namespace TierItemColors;
 
@@ -12,11 +13,12 @@ public class TierItemColors : Mod
 {
     public override string Author => "alexebz";
     public override string Name => "Tier Item Colors";
-    public override string Description => "Colors tiered item names by tier, keeps Unique items purple, and marks curses/enchantments with symbols.";
+    public override string Description => "Colors equipment names by tier and marks curses/enchantments with Stoneshard-style icons.";
     public override string Version => "0.1.0";
     public override string TargetVersion => "0.9.4.25";
 
-    private const string HoverWeaponRefresh = "gml_Object_o_hoverWeapon_Other_20";
+    private const string HoverWeaponDraw = "gml_Object_o_hoverWeapon_Other_21";
+    private const string GroundLootDrawEnd = "gml_Object_o_weapon_loot_Draw_73";
     private const string LootColor = "gml_GlobalScript_scr_loot_color";
     private const string WeaponsTable = "gml_GlobalScript_table_weapons";
     private const string ArmorTable = "gml_GlobalScript_table_armor";
@@ -28,21 +30,23 @@ public class TierItemColors : Mod
         // column 1 (name), while some code paths use column 3 (resource id), so
         // both are emitted as aliases for the same tier.
         Msl.AddFunction(BuildTierColorFunction(), "scr_tic_tier_color");
-        Msl.AddFunction(ModFiles.GetCode("scr_tic_enchantment_prefix.gml"), "scr_tic_enchantment_prefix");
-        Msl.AddFunction(ModFiles.GetCode("scr_tic_debug_hover.gml"), "scr_tic_debug_hover");
+        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_hover_markers.gml"), "scr_tic_draw_hover_markers");
+        Msl.AddFunction(ModFiles.GetCode("scr_tic_draw_ground_markers.gml"), "scr_tic_draw_ground_markers");
+
+        ConfigureMarkerSprite("spr_tic_enchant_minor");
+        ConfigureMarkerSprite("spr_tic_enchant_major");
+        ConfigureMarkerSprite("spr_tic_cursed");
 
         PatchLootColor();
+        PatchHoverMarkers();
+        PatchGroundMarkers();
+    }
 
-        // Other_20 has already built enchantedAttributesArray at this point.
-        // Apply the prefix first, then log the actual final title that vanilla
-        // will wrap and draw. This lets runtime diagnostics distinguish a title
-        // hook problem from a missing glyph in the active Stoneshard font.
-        Msl.LoadGML(HoverWeaponRefresh)
-            .MatchFrom("titleWidth = minWidth -")
-            .InsertAbove(@"var _ticPrefix = scr_tic_enchantment_prefix(owner, enchantedAttributesArray)
-title = _ticPrefix + title
-scr_tic_debug_hover(owner, enchantedAttributesArray, title, _ticPrefix)")
-            .Save();
+    private static void ConfigureMarkerSprite(string spriteName)
+    {
+        UndertaleSprite sprite = Msl.GetSprite(spriteName);
+        sprite.OriginX = 8;
+        sprite.OriginY = 8;
     }
 
     private static string BuildTierColorFunction()
@@ -166,7 +170,7 @@ scr_tic_debug_hover(owner, enchantedAttributesArray, title, _ticPrefix)")
         if (targetLine < 0)
         {
             throw new InvalidOperationException(
-                $"Tier Item Colors could not locate the _color undefined check in {LootColor}. " +
+                "Tier Item Colors could not locate the _color undefined check in " + LootColor + ". " +
                 "The Stoneshard loot-color implementation may have changed.");
         }
 
@@ -182,5 +186,55 @@ scr_tic_debug_hover(owner, enchantedAttributesArray, title, _ticPrefix)")
             + string.Join("\n", lines, targetLine, lines.Length - targetLine);
 
         Msl.SetStringGMLInFile(patched, LootColor);
+    }
+
+    private static void PatchHoverMarkers()
+    {
+        string code = Msl.GetStringGMLFromFile(HoverWeaponDraw);
+        string[] lines = code.Replace("\r\n", "\n").Split('\n');
+
+        int targetLine = -1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("scr_drawTextExt", StringComparison.Ordinal)
+                && lines[i].Contains("title", StringComparison.Ordinal)
+                && lines[i].Contains("titleColor", StringComparison.Ordinal))
+            {
+                targetLine = i;
+                break;
+            }
+        }
+
+        if (targetLine < 0)
+        {
+            throw new InvalidOperationException(
+                "Tier Item Colors could not locate the title draw call in " + HoverWeaponDraw + ".");
+        }
+
+        string indent = lines[targetLine][..(lines[targetLine].Length - lines[targetLine].TrimStart().Length)];
+        string injected = indent
+            + "scr_tic_draw_hover_markers(owner, enchantedAttributesArray, contentX + (contentWidth / 2), contentY + _offsetY, title, textScale, surfaceScale)\n";
+
+        string patched = string.Join("\n", lines, 0, targetLine)
+            + (targetLine > 0 ? "\n" : "")
+            + injected
+            + string.Join("\n", lines, targetLine, lines.Length - targetLine);
+
+        Msl.SetStringGMLInFile(patched, HoverWeaponDraw);
+    }
+
+    private static void PatchGroundMarkers()
+    {
+        // Draw End is independent from the normal Draw event, so adding a marker
+        // layer does not replace or interfere with vanilla loot rendering.
+        try
+        {
+            string code = Msl.GetStringGMLFromFile(GroundLootDrawEnd);
+            Msl.SetStringGMLInFile(code + "\nscr_tic_draw_ground_markers(id)\n", GroundLootDrawEnd);
+        }
+        catch (InvalidOperationException)
+        {
+            Msl.AddNewEvent("o_weapon_loot", "scr_tic_draw_ground_markers(id)", EventType.Draw, 73);
+        }
     }
 }
