@@ -30,7 +30,7 @@ Markers are intentionally **not drawn on equipment lying on the ground**. Ground
 
 ### Hover layout
 
-The source sprites are 16×16 and are drawn at **1.5× UI scale** (24×24 at the base scale). They are vertically centered against the first title line and placed immediately to the left of the centered title with a 4px title gap.
+The source sprites are 16×16 and are drawn at **1.5× UI scale** (24×24 at the base scale). They are anchored inside the tooltip header with a small left inset instead of depending on localized title width, so long or wrapped item names cannot push the markers outside the clipped hover surface.
 
 For items that are both cursed and enchanted, the cursed marker is drawn first and the enchantment marker is placed beside it with a small 2px inter-icon gap.
 
