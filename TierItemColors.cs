@@ -123,7 +123,7 @@ public class TierItemColors : Mod
             case 3: return "make_colour_rgb(93, 142, 173)";  // Steel Blue #5D8EAD
             case 4: return "make_colour_rgb(181, 106, 90)";  // Burnished Red #B56A5A
             case 5: return "make_colour_rgb(214, 166, 74)";  // Antique Gold #D6A64A
-            default: throw new ArgumentOutOfRangeException(nameof(tier));
+            default: throw new ArgumentOutOfRangeException("tier");
         }
     }
 
