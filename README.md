@@ -18,20 +18,21 @@ Normal and cursed equipment use their tier color.
 
 ## Item-state markers
 
-Item state is communicated with small Stoneshard-style 16x16 sprites while preserving the selected name color:
+Item state is communicated with small Stoneshard-style sprites in equipment hover tooltips while preserving the selected name color:
 
 - `spr_tic_enchant_minor` — one enchantment
 - `spr_tic_enchant_major` — two enchantments
 - `spr_tic_cursed` — cursed item
 
-For a cursed enchanted item, the curse sprite is drawn first and the corresponding enchantment sprite is drawn beside it.
-
 The markers are only shown after an item is identified, so unidentified equipment does not reveal hidden curse or enchantment information.
 
-Markers are rendered in both places where they are most useful:
+Markers are intentionally **not drawn on equipment lying on the ground**. Ground loot keeps Stoneshard's normal presentation; state icons appear only in the hover tooltip.
 
-- beside the item title in the equipment hover tooltip;
-- above equipment while it is lying on the ground (`o_weapon_loot`).
+### Hover layout
+
+The source sprites are 16×16 and are drawn at **1.5× UI scale** (24×24 at the base scale). They are vertically centered against the first title line and placed immediately to the left of the centered title with a 4px title gap.
+
+For items that are both cursed and enchanted, the cursed marker is drawn first and the enchantment marker is placed beside it with a small 2px inter-icon gap.
 
 ## Visual language
 
@@ -49,9 +50,9 @@ The mod does **not** infer tier from runtime `LVL`. During patching it reads the
 
 Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-Curse state is read from `data["is_cursed"]`. In hover tooltips, enchantment level is derived from the `enchantedAttributesArray` that vanilla builds via `scr_hoversGetEnchantedAttributes()`. On ground loot, the same state is recovered from the persisted `Char0`/`Char1` fields.
+Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds for the equipment tooltip.
 
-The marker sprites are packed automatically by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations. The ground marker layer is added as a Draw End event so it does not replace vanilla loot rendering.
+The marker sprites are packed by MSL from the PNGs in the mod source folder and drawn separately from text, avoiding locale/font glyph limitations.
 
 ## Build / MSL discovery
 
@@ -74,9 +75,7 @@ ModShardLauncher/
         ├── spr_tic_enchant_major.png
         ├── spr_tic_cursed.png
         └── Codes/
-            ├── scr_tic_draw_hover_markers.gml
-            ├── scr_tic_draw_ground_markers.gml
-            └── scr_tic_debug_hover.gml
+            └── scr_tic_draw_hover_markers.gml
 ```
 
 Until PR #1 is merged, use the feature branch explicitly:
