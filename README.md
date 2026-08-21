@@ -36,17 +36,19 @@ The markers are only shown after an item is identified, so unidentified equipmen
 - **Tier color** → progression tier for normal/cursed equipment
 - **Purple** → Unique item
 - **☠** → Cursed
-- **✦ / ✦✦** → one/two enchantments
+- **✦ / ✦✦** → one/two displayed enchantment attributes
 
 ## Implementation
 
 Stoneshard 0.9.4.25 centralizes item-name color selection in `scr_loot_color(id)`. Tier Item Colors hooks that function so the same tier color is used consistently by tooltips, ground labels, shops, logs, and other UI that relies on vanilla loot coloring.
 
-Vanilla equipment exposes its tier through the item instance variable `LVL`. Some modded/enchantment-generated items also persist the tier into `data["LVL"]`, so the mod supports both representations. Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
+The mod does **not** infer tier from runtime `LVL`. During patching it reads the current `gml_GlobalScript_table_weapons` and `gml_GlobalScript_table_armor` directly from the loaded `vanilla.win`. In both tables, column 2 is the equipment tier and column 3 is the item id. From those tables it generates an exact `idName -> tier color` resolver for the current game data. `table_armor` covers shields, helmets, chest pieces, gloves, boots, belts, rings, necklaces, and cloaks.
 
-Curse state is read from `data["is_cursed"]`. Vanilla enchantment attributes are stored as `Char0`, `Char1`, etc. The mod uses those fields to build the `☠` and `✦` name prefix without altering the underlying item stats, quality, curse, or enchantment data.
+Items whose `quality` is Unique keep vanilla purple instead of receiving a tier color.
 
-The tooltip prefix is inserted in `gml_Object_o_hoverWeapon_Other_20` before vanilla wraps and measures `title`, so symbols are included in tooltip layout calculations.
+Curse state is read from `data["is_cursed"]`. Enchantment markers are derived from the `enchantedAttributesArray` that vanilla already builds in `gml_Object_o_hoverWeapon_Other_20` through `scr_hoversGetEnchantedAttributes()`. This means the number of stars matches the enchantment attributes actually displayed in the tooltip rather than relying on `Char0`/`Char1` storage details.
+
+The tooltip prefix is inserted before vanilla wraps and measures `title`, so symbols are included in tooltip layout calculations.
 
 ## Build / MSL discovery
 
@@ -65,7 +67,6 @@ ModShardLauncher/
         ├── TierItemColors.cs
         ├── README.md
         └── Codes/
-            ├── scr_tic_tier_color.gml
             └── scr_tic_enchantment_prefix.gml
 ```
 
